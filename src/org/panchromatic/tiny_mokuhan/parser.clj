@@ -1,12 +1,17 @@
 (ns org.panchromatic.tiny-mokuhan.parser
-  (:refer-clojure :exclude [read-line])
   (:require [clojure.zip :as zip]
             [org.panchromatic.tiny-mokuhan.ast :as ast]
+            [org.panchromatic.tiny-mokuhan.util.misc :as umizc]
             [org.panchromatic.tiny-mokuhan.util.regex :as uregex]
             [org.panchromatic.tiny-mokuhan.zip :as mzip]))
 
 (def ^:private sigils
   ["\\&" "\\#" "\\/" "\\^" "\\>"])
+
+(defn- delimiter-matcher [delim template]
+  (-> (uregex/quote delim)
+      re-pattern
+      (re-matcher template)))
 
 ;;; {{name}}   -> variable
 ;;; {{{name}}} -> unescaped variable / when only delimiters are defaults
@@ -99,11 +104,29 @@
         #(parse-tag template state)
         #(parse-text template state)))))
 
-(defn parse [template]
-  (let [state {:location (mzip/ast-zip (ast/->Mustache []))
-               :nest-level 0
-               :delimiters {:open "{{"
-                            :close "}}"}
-               :matchers {:open-delim (re-matcher #"\Q{{\E" template)
-                          :close-delim (re-matcher #"\Q}}\E" template)}}]
-    (trampoline parse* template state)))
+(def default-parser-options
+  {:delimiters {:open "{{"
+                :close "}}"}})
+
+(defn parse
+  "Parse mustache template, then return AST.
+  Some options are available:
+
+  :delimiters - You can set the default delimiters.
+                Default delimiters are {:open \"{{\" :close \"}}\"}
+  "
+  ([template]
+   (parse template default-parser-options))
+
+  ([template options]
+   (let [{:keys [delimiters]
+          :as options} (umizc/deep-merge default-parser-options options)
+         state {:location (mzip/ast-zip (ast/->Mustache []))
+                :nest-level 0
+                :default-delimiters delimiters
+                :delimiters delimiters
+                :matchers {:open-delim (-> (:open delimiters)
+                                           (delimiter-matcher template))
+                           :close-delim (-> (:close delimiters)
+                                            (delimiter-matcher template))}}]
+     (trampoline parse* template state))))

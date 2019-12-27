@@ -1,4 +1,5 @@
-(ns org.panchromatic.tiny-mokuhan.util.regex)
+(ns org.panchromatic.tiny-mokuhan.util.regex
+  (:refer-clojure :exclude [reset!]))
 
 (defn reset!
   ([^java.util.regex.Matcher matcher]
@@ -9,3 +10,6 @@
 (defn re-find-pos [^java.util.regex.Matcher matcher]
   (when-let [result (re-find matcher)]
     [result (.start matcher) (.end matcher)]))
+
+(defn quote [s]
+  (java.util.regex.Pattern/quote s))
