@@ -38,7 +38,7 @@
     (loop [s s
            result []]
       (let [m (uregex/reset! m s)]
-        (if-let [[_ st ed] (uregex/re-find-with-pos m)]
+        (if-let [[_ st ed] (uregex/re-find-pos m)]
           (recur (subs s ed)
                  (cond-> result
                    (not= 0 st) (conj (ast/->Text (subs s 0 st)))
