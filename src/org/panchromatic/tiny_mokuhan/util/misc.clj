@@ -8,5 +8,5 @@
     (and (some? m1) (nil? m2))
     m1
 
-    (and (some? m2) (nil? m1))
+    :else
     m2))

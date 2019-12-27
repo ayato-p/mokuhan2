@@ -21,5 +21,5 @@
   (t/is (= {:x {:y 1}}
            (sut/deep-merge {:x {:y 1}} nil)))
 
-  (t/is (= {:x {:y 1}}
-           (sut/deep-merge nil {:x {:y 1}}))))
+  (t/is (= {:x {:y 2}}
+           (sut/deep-merge {:x {:y 1}} {:x {:y 2}}))))
