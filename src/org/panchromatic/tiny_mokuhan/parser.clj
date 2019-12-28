@@ -5,26 +5,21 @@
             [org.panchromatic.tiny-mokuhan.util.regex :as uregex]
             [org.panchromatic.tiny-mokuhan.zip :as mzip]))
 
-(def ^:private sigils
-  ["\\&" "\\#" "\\/" "\\^" "\\>"])
+(def ^:private double-mustache
+  {:open "{{"
+   :close "}}"})
 
-(defn- delimiter-matcher [delim template]
+(defn- open-delim-matcher [delim template]
   (-> (uregex/quote delim)
+      (str "([" "\\{" "\\&" "\\#" "\\/" "\\^" "\\>])?")
       re-pattern
       (re-matcher template)))
 
-;;; {{name}}   -> variable
-;;; {{{name}}} -> unescaped variable / when only delimiters are defaults
-;;; {{&name}} -> unescaped variable
-;;; {{#persone}} <-> {{/person}} -> section
-;;;   false or empty list -> delete
-;;;   non empty list -> repeat
-;;;   lambda -> call function
-;;;   non-false -> context
-;;; {{^name}} <-> {{/name}} -> inverted variable
-;;; {{! blah }} -> comment
-;;; {{> box}} -> partial
-;;; {{=<% %>=}} -> set delimiter
+(defn- close-delim-matcher [delim template]
+  (-> delim
+      uregex/quote
+      re-pattern
+      (re-matcher template)))
 
 (defn- update-delim-matchers
   ([matchers]
@@ -67,30 +62,73 @@
                  (update :location mzip/append-children items)
                  (update :matchers update-delim-matchers template')))))
 
-(def ^:private id-pattern
-  "[a-zA-Z][a-zA-Z0-9]+")
+(def ^:private key-pattern
+  "[^\\s\\.]+")
 
 (def ^:private variable-pattern
   (re-pattern (str "\\s*"
-                   "(?<id>" id-pattern "(?:\\." id-pattern ")*)"
+                   "(?<ks>" key-pattern "(?:\\." key-pattern ")*)"
                    "\\s*")))
+
+(defn- try-parse-variable
+  [template {{:keys [close-delim]} :matchers
+             :keys [delimiters] :as state}]
+  (let [[_ od-st od-ed] (get-in state [:parse-tag :od])
+        [_ cd-st cd-ed] (uregex/re-find-pos close-delim)]
+    (when-let [[_ ks] (and (int? od-st) (int? cd-st)
+                           (->> (subs template od-ed cd-st)
+                                (re-matches variable-pattern)))]
+      (let [item (ast/variable {:keys ks :delimiters delimiters})
+            template' (subs template cd-ed)]
+        #(parse* template'
+                 (-> (dissoc state :parse-tag)
+                     (update :location zip/append-child item)
+                     (update :matchers update-delim-matchers template')))))))
+
+(defn- try-parse-unescaped-variable
+  [template {{:keys [close-delim]} :matchers
+             :keys [delimiters] :as state}]
+  (let [[od od-st od-ed] (get-in state [:parse-tag :od])
+        [cd cd-st cd-ed] (uregex/re-find-pos close-delim)]
+    (when-let [[_ ks] (and (int? od-st) (int? cd-st)
+                           (->> (subs template od-ed cd-st)
+                                (re-matches variable-pattern)))]
+      (let [item (ast/unescaped-variable {:keys ks :delimiters {:open od :close cd}})
+            template' (subs template cd-ed)]
+        #(parse* template'
+                 (-> (dissoc state :parse-tag)
+                     (update :location zip/append-child item)
+                     (update :matchers update-delim-matchers template')))))))
+
+(defn- try-parse-triple-mustache-variable
+  [template state]
+  (let [[od od-st od-ed] (get-in state [:parse-tag :od])
+        [cd cd-st cd-ed] (-> (re-matcher #"\Q}}}\E" template)
+                             uregex/re-find-pos)]
+    (when-let [[_ ks] (and (int? od-st) (int? cd-st)
+                           (->> (subs template od-ed cd-st)
+                                (re-matches variable-pattern)))]
+      (let [item (-> {:keys ks :delimiters {:open od :close cd}}
+                     ast/unescaped-variable)
+            template' (subs template cd-ed)]
+        #(parse* template'
+                 (-> (dissoc state :parse-tag)
+                     (update :location zip/append-child item)
+                     (update :matchers update-delim-matchers template')))))))
 
 (defn- parse-tag [template {{:keys [open close]} :delimiters
                             {:keys [open-delim close-delim]} :matchers
+                            :keys [delimiters]
                             :as state}]
-  (let [[_ od-st od-ed] (uregex/re-find-pos open-delim)
-        [_ cd-st cd-ed] (uregex/re-find-pos close-delim)]
-
-    (if-let [[_ id] (->> (subs template od-ed cd-st)
-                         (re-matches variable-pattern))]
-      (let [item (ast/->Variable id open close)
-            template' (subs template cd-ed)]
-        #(parse* template'
-                 (-> state
-                     (update :location zip/append-child item)
-                     (update :matchers update-delim-matchers template'))))
-      #(parse-text template
-                   (update state :matchers update-delim-matchers)))))
+  (let [[[od sigil] od-st od-ed] (uregex/re-find-pos open-delim)
+        state (assoc-in state [:parse-tag :od] [od od-st od-ed])]
+    (or (case sigil
+          "&" (try-parse-unescaped-variable template state)
+          "{" (try-parse-triple-mustache-variable template state)
+          nil (try-parse-variable template state))
+        #(parse-text template
+                     (-> (dissoc state :parse-tag)
+                         (update :matchers update-delim-matchers))))))
 
 (defn- parse* [template {{:keys [open-delim close-delim]} :matchers :as state}]
   (if (or (nil? template) (zero? (.length template)))
@@ -105,8 +143,7 @@
         #(parse-text template state)))))
 
 (def default-parser-options
-  {:delimiters {:open "{{"
-                :close "}}"}})
+  {:delimiters double-mustache})
 
 (defn parse
   "Parse mustache template, then return AST.
@@ -126,7 +163,7 @@
                 :default-delimiters delimiters
                 :delimiters delimiters
                 :matchers {:open-delim (-> (:open delimiters)
-                                           (delimiter-matcher template))
+                                           (open-delim-matcher template))
                            :close-delim (-> (:close delimiters)
-                                            (delimiter-matcher template))}}]
+                                            (close-delim-matcher template))}}]
      (trampoline parse* template state))))

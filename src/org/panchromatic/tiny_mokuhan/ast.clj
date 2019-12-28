@@ -20,16 +20,12 @@
 (defn newline []
   (->NewLine))
 
-(defrecord Variable [keys open-delim close-delim])
+(defrecord Variable [keys delimiters])
 
-(defn variable
-  [{:keys [keys open-delim close-delim]
-    :as m}]
+(defn variable [{:keys [keys delimiters] :as m}]
   (map->Variable m))
 
-(defrecord UnescapedVariable [keys open-delim close-delim])
+(defrecord UnescapedVariable [keys delimiters])
 
-(defn unescaped-variable
-  [{:keys [keys open-delim close-delim]
-    :as m}]
+(defn unescaped-variable [{:keys [keys delimiters] :as m}]
   (map->UnescapedVariable m))
