@@ -5,15 +5,16 @@
 
 (t/deftest render-text-test
   (let [ast (ast/mustache
-             {:contents
-              [(ast/text {:content "Hello, world"})]})]
+             [(ast/text "Hello, world")])]
     (t/is (= "Hello, world"
              (sut/render ast))))
 
   (let [ast (ast/mustache
-             {:contents
-              [(ast/text {:content "Hello"})
-               (ast/newline)
-               (ast/text {:content "world"})]})]
+             [(ast/text "Hello")
+              (ast/newline)
+              (ast/text "world")])]
     (t/is (= "Hello\nworld"
              (sut/render ast)))))
+
+(t/deftest render-variable-test
+  )

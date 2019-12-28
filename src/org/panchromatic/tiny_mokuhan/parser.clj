@@ -41,10 +41,10 @@
         (if-let [[_ st ed] (uregex/re-find-pos m)]
           (recur (subs s ed)
                  (cond-> result
-                   (not= 0 st) (conj (ast/->Text (subs s 0 st)))
-                   true (conj (ast/->NewLine))))
+                   (not= 0 st) (conj (ast/text (subs s 0 st)))
+                   true (conj (ast/newline))))
           (cond-> result
-            (not= 0 (.length s)) (conj (ast/->Text (subs s 0 (.length s))))))))))
+            (not= 0 (.length s)) (conj (ast/text (subs s 0 (.length s))))))))))
 
 (defn- parse-text [template {{:keys [open-delim]} :matchers :as state}]
   (let [[_ od-st] (uregex/re-find-pos open-delim)
@@ -78,7 +78,7 @@
     (when-let [[_ ks] (and (int? od-st) (int? cd-st)
                            (->> (subs template od-ed cd-st)
                                 (re-matches variable-pattern)))]
-      (let [item (f {:keys ks :delimiters {:open od :close cd}})
+      (let [item (f ks {:open od :close cd})
             template' (subs template cd-ed)]
         #(parse* template'
                  (-> (dissoc state :parse-tag)
@@ -106,8 +106,7 @@
                            (= double-mustache delimiters)
                            (->> (subs template od-ed cd-st)
                                 (re-matches variable-pattern)))]
-      (let [item (-> {:keys ks :delimiters {:open od :close cd}}
-                     ast/unescaped-variable)
+      (let [item (ast/unescaped-variable ks {:open od :close cd})
             template' (subs template cd-ed)]
         #(parse* template'
                  (-> (dissoc state :parse-tag)
@@ -156,7 +155,7 @@
   ([template options]
    (let [{:keys [delimiters]
           :as options} (umizc/deep-merge default-parser-options options)
-         state {:location (mzip/ast-zip (ast/->Mustache []))
+         state {:location (mzip/ast-zip (ast/mustache))
                 :nest-level 0
                 :default-delimiters delimiters
                 :delimiters delimiters

@@ -6,26 +6,26 @@
 
 (defn mustache
   ([]
-   (mustache {:contents []}))
-  ([{:keys [contents] :as m}]
-   (map->Mustache m)))
+   (mustache []))
+  ([contents]
+   (Mustache. contents)))
 
 (defrecord Text [content])
 
-(defn text [{:keys [content] :as m}]
-  (map->Text m))
+(defn text [content]
+  (Text. content))
 
 (defrecord NewLine [])
 
 (defn newline []
-  (->NewLine))
+  (NewLine.))
 
 (defrecord Variable [keys delimiters])
 
-(defn variable [{:keys [keys delimiters] :as m}]
-  (map->Variable m))
+(defn variable [keys delimiters]
+  (Variable. keys delimiters))
 
 (defrecord UnescapedVariable [keys delimiters])
 
-(defn unescaped-variable [{:keys [keys delimiters] :as m}]
-  (map->UnescapedVariable m))
+(defn unescaped-variable [keys delimiters]
+  (UnescapedVariable. keys delimiters))
