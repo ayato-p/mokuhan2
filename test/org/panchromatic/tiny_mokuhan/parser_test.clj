@@ -160,7 +160,12 @@
       (t/is (= (ast/mustache
                 {:contents
                  [(ast/text {:content "{{{foo}}}"})]})
-               (sut/parse "{{{foo}}}" {:delimiters {:open "||" :close "||"}}))))))
+               (sut/parse "{{{foo}}}" {:delimiters {:open "||" :close "||"}})))
+
+      (t/is (= (ast/mustache
+                {:contents
+                 [(ast/text {:content "<<{foo}}}"})]})
+               (sut/parse "<<{foo}}}" {:delimiters {:open "<<" :close "}}}"}}))))))
 
 (t/deftest default-delimiters-test
   (t/is (= (ast/mustache

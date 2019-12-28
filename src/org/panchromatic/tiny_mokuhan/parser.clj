@@ -83,7 +83,7 @@
         #(parse* template'
                  (-> (dissoc state :parse-tag)
                      (update :location zip/append-child item)
-                     (update :matchers update-delim-matchers template'))))))  )
+                     (update :matchers update-delim-matchers template')))))))
 
 (def ^{:private true
        :arglists '([template {{:keys [close-delim]} :matchers
@@ -98,11 +98,12 @@
   (partial try-parse-variable* ast/unescaped-variable))
 
 (defn- try-parse-triple-mustache-variable
-  [template state]
+  [template {:keys [delimiters] :as state}]
   (let [[od od-st od-ed] (get-in state [:parse-tag :od])
         [cd cd-st cd-ed] (-> (re-matcher #"\Q}}}\E" template)
                              uregex/re-find-pos)]
     (when-let [[_ ks] (and (int? od-st) (int? cd-st)
+                           (= double-mustache delimiters)
                            (->> (subs template od-ed cd-st)
                                 (re-matches variable-pattern)))]
       (let [item (-> {:keys ks :delimiters {:open od :close cd}}
