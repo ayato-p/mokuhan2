@@ -70,35 +70,32 @@
                    "(?<ks>" key-pattern "(?:\\." key-pattern ")*)"
                    "\\s*")))
 
-(defn- try-parse-variable
-  [template {{:keys [close-delim]} :matchers
-             :keys [delimiters] :as state}]
-  (let [[_ od-st od-ed] (get-in state [:parse-tag :od])
-        [_ cd-st cd-ed] (uregex/re-find-pos close-delim)]
-    (when-let [[_ ks] (and (int? od-st) (int? cd-st)
-                           (->> (subs template od-ed cd-st)
-                                (re-matches variable-pattern)))]
-      (let [item (ast/variable {:keys ks :delimiters delimiters})
-            template' (subs template cd-ed)]
-        #(parse* template'
-                 (-> (dissoc state :parse-tag)
-                     (update :location zip/append-child item)
-                     (update :matchers update-delim-matchers template')))))))
-
-(defn- try-parse-unescaped-variable
-  [template {{:keys [close-delim]} :matchers
-             :keys [delimiters] :as state}]
+(defn- try-parse-variable*
+  [f template {{:keys [close-delim]} :matchers
+               :keys [delimiters] :as state}]
   (let [[od od-st od-ed] (get-in state [:parse-tag :od])
         [cd cd-st cd-ed] (uregex/re-find-pos close-delim)]
     (when-let [[_ ks] (and (int? od-st) (int? cd-st)
                            (->> (subs template od-ed cd-st)
                                 (re-matches variable-pattern)))]
-      (let [item (ast/unescaped-variable {:keys ks :delimiters {:open od :close cd}})
+      (let [item (f {:keys ks :delimiters {:open od :close cd}})
             template' (subs template cd-ed)]
         #(parse* template'
                  (-> (dissoc state :parse-tag)
                      (update :location zip/append-child item)
-                     (update :matchers update-delim-matchers template')))))))
+                     (update :matchers update-delim-matchers template'))))))  )
+
+(def ^{:private true
+       :arglists '([template {{:keys [close-delim]} :matchers
+                              :keys [delimiters] :as state}])}
+  try-parse-variable
+  (partial try-parse-variable* ast/variable))
+
+(def ^{:private true
+       :arglists '([template {{:keys [close-delim]} :matchers
+                              :keys [delimiters] :as state}])}
+  try-parse-unescaped-variable
+  (partial try-parse-variable* ast/unescaped-variable))
 
 (defn- try-parse-triple-mustache-variable
   [template state]
