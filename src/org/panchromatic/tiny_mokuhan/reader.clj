@@ -11,6 +11,21 @@
     (when-not (neg? i)
       (char i))))
 
+(defn read-chars [^java.io.Reader rdr n]
+  (loop [n n
+         res []]
+    (if-not (pos? n)
+      res
+      (recur (dec n) (conj res (read-char rdr))))))
+
+(defn skip [^java.io.Reader rdr n]
+  (.skip rdr n))
+
 (defn unread-char
   [^java.io.PushbackReader rdr char]
   (.unread rdr (int char)))
+
+(defn unread-chars
+  [^java.io.PushbackReader rdr chrs]
+  (doseq [c (reverse chrs)]
+    (unread-char rdr c)))
