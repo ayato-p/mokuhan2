@@ -24,9 +24,11 @@
 
 (import-private-vars
  [`p/lookahead-and-matched?
-  `p/read-text
-  `p/read-whitespace
-  `p/read-newline])
+  `p/parse-text
+  `p/parse-whitespace
+  `p/parse-newline
+  `p/parse-variable-tag
+  `p/parse-tag])
 
 (defn- test-reader
   ([s]
@@ -41,7 +43,7 @@
   {:ast (mzip/ast-zip)
    :template-context {:delimiters default-delimiters
                       :row 1
-                      :column 0
+                      :column 1
                       :standalone? true}})
 
 (defn- read-rest [reader]
@@ -67,19 +69,19 @@
     (t/is (false? (lookahead-and-matched? reader "<<<")))
     (t/is (= (read-rest reader) "<<||"))))
 
-(t/deftest read-text-test
+(t/deftest parse-text-test
   (t/are [s expected rest-str]
       (with-open [reader (test-reader s 2)]
         (and (= {:ast (ast/syntax-tree
                        [(ast/text expected (ast/template-context default-delimiters
                                                                  1
-                                                                 0
+                                                                 1
                                                                  true))])
                  :template-context {:delimiters default-delimiters
                                     :row 1
-                                    :column 5
+                                    :column 6
                                     :standalone? false}}
-                (-> (read-text reader initial-state)
+                (-> (parse-text reader initial-state)
                     (update :ast zip/root)))
              (= rest-str (read-rest reader))))
     "Hello" "Hello" ""
@@ -95,29 +97,43 @@
     (t/is (= {:ast (ast/syntax-tree
                     [(ast/text "Hello{x{x" (ast/template-context default-delimiters
                                                                  1
-                                                                 0
+                                                                 1
                                                                  true))])
               :template-context {:delimiters default-delimiters
                                  :row 1
-                                 :column 9
+                                 :column 10
                                  :standalone? false}}
-             (-> (read-text reader initial-state)
+             (-> (parse-text reader initial-state)
+                 (update :ast zip/root))))
+    (t/is (= "" (read-rest reader))))
+
+  (with-open [reader (test-reader "{x{x" 2)]
+    (t/is (= {:ast (ast/syntax-tree
+                    [(ast/text "{x{x" (ast/template-context default-delimiters
+                                                            1
+                                                            1
+                                                            true))])
+              :template-context {:delimiters default-delimiters
+                                 :row 1
+                                 :column 5
+                                 :standalone? false}}
+             (-> (parse-text reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "" (read-rest reader)))))
 
-(t/deftest read-whitespace-test
+(t/deftest parse-whitespace-test
   (t/are [s expected rest-str]
       (with-open [reader (test-reader s 2)]
         (and (= {:ast (ast/syntax-tree
                        [(ast/whitespace " " (ast/template-context default-delimiters
                                                                   1
-                                                                  0
+                                                                  1
                                                                   true))])
                  :template-context {:delimiters default-delimiters
                                     :row 1
-                                    :column 1
+                                    :column 2
                                     :standalone? true}}
-                (-> (read-whitespace reader initial-state)
+                (-> (parse-whitespace reader initial-state)
                     (update :ast zip/root)))
              (= rest-str (read-rest reader))))
     " " " " ""
@@ -131,28 +147,28 @@
     (t/is (= {:ast (ast/syntax-tree
                     [(ast/whitespace "  " (ast/template-context default-delimiters
                                                                 1
-                                                                0
+                                                                1
                                                                 true))])
               :template-context {:delimiters default-delimiters
                                  :row 1
-                                 :column 2
+                                 :column 3
                                  :standalone? true}}
-             (-> (read-whitespace reader initial-state)
+             (-> (parse-whitespace reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "x" (read-rest reader)))))
 
-(t/deftest read-newline-test
+(t/deftest parse-newline-test
   (with-open [reader (test-reader "\r\nx" 2)]
     (t/is (= {:ast (ast/syntax-tree
                     [(ast/newline "\r\n" (ast/template-context default-delimiters
                                                                1
-                                                               0
+                                                               1
                                                                true))])
               :template-context {:delimiters default-delimiters
                                  :row 2
-                                 :column 0
+                                 :column 1
                                  :standalone? true}}
-             (-> (read-newline reader initial-state)
+             (-> (parse-newline reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "x" (read-rest reader))))
 
@@ -160,12 +176,172 @@
     (t/is (= {:ast (ast/syntax-tree
                     [(ast/newline "\n" (ast/template-context default-delimiters
                                                              1
-                                                             0
+                                                             1
                                                              true))])
               :template-context {:delimiters default-delimiters
                                  :row 2
-                                 :column 0
+                                 :column 1
                                  :standalone? true}}
-             (-> (read-newline reader initial-state)
+             (-> (parse-newline reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "x" (read-rest reader)))))
+
+(t/deftest parse-variable-tag-test
+  (t/testing "Successes"
+    (with-open [reader (test-reader "{{foo}}" 2)]
+      (t/is (= {:ast (ast/syntax-tree
+                      [(ast/variable-tag ["foo"] (ast/template-context default-delimiters
+                                                                       1
+                                                                       1
+                                                                       true))])
+                :template-context {:delimiters default-delimiters
+                                   :row 1
+                                   :column 8
+                                   :standalone? false}}
+               (-> (parse-variable-tag reader initial-state)
+                   (update :ast mzip/complete))))
+
+      (t/is (str/blank? (slurp reader))))
+
+    (with-open [reader (test-reader "{{ foo }}" 2)]
+      (t/is (= {:ast (ast/syntax-tree
+                      [(ast/variable-tag ["foo"] (ast/template-context default-delimiters
+                                                                       1
+                                                                       1
+                                                                       true))])
+                :template-context {:delimiters default-delimiters
+                                   :row 1
+                                   :column 10
+                                   :standalone? false}}
+               (-> (parse-variable-tag reader initial-state)
+                   (update :ast mzip/complete))))
+
+      (t/is (str/blank? (slurp reader))))
+
+    (with-open [reader (test-reader "{{foo.bar}}" 2)]
+      (t/is (= {:ast (ast/syntax-tree
+                      [(ast/variable-tag ["foo" "bar"] (ast/template-context default-delimiters
+                                                                             1
+                                                                             1
+                                                                             true))])
+                :template-context {:delimiters default-delimiters
+                                   :row 1
+                                   :column 12
+                                   :standalone? false}}
+               (-> (parse-variable-tag reader initial-state)
+                   (update :ast mzip/complete))))
+
+      (t/is (str/blank? (slurp reader))))
+
+    (with-open [reader (test-reader "{{foo{{}}" 2)]
+      (t/is (= {:ast (ast/syntax-tree
+                      [(ast/variable-tag ["foo{{"] (ast/template-context default-delimiters
+                                                                         1
+                                                                         1
+                                                                         true))])
+                :template-context {:delimiters default-delimiters
+                                   :row 1
+                                   :column 10
+                                   :standalone? false}}
+               (-> (parse-variable-tag reader initial-state)
+                   (update :ast mzip/complete))))
+
+      (t/is (str/blank? (slurp reader))))
+
+    (with-open [reader (test-reader "{{fo}o}}" 2)]
+      (t/is (= {:ast (ast/syntax-tree
+                      [(ast/variable-tag ["fo}o"] (ast/template-context default-delimiters
+                                                                        1
+                                                                        1
+                                                                        true))])
+                :template-context {:delimiters default-delimiters
+                                   :row 1
+                                   :column 9
+                                   :standalone? false}}
+               (-> (parse-variable-tag reader initial-state)
+                   (update :ast mzip/complete))))
+
+      (t/is (str/blank? (slurp reader))))
+
+    (with-open [reader (test-reader "{{foo}}bar" 2)]
+      (t/is (= {:ast (ast/syntax-tree
+                      [(ast/variable-tag ["foo"] (ast/template-context default-delimiters
+                                                                       1
+                                                                       1
+                                                                       true))])
+                :template-context {:delimiters default-delimiters
+                                   :row 1
+                                   :column 8
+                                   :standalone? false}}
+               (-> (parse-variable-tag reader initial-state)
+                   (update :ast mzip/complete))))
+
+      (t/is (= "bar" (slurp reader)))))
+
+  (t/testing "Errors"
+    (with-open [reader (test-reader "{{foo" 2)]
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
+                :message "Unclosed tag"
+                :occurred {:row 1 :column 1}}
+               (-> (parse-variable-tag reader initial-state)
+                   :error))))
+
+    (with-open [reader (test-reader "{{fo o}}" 2)]
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
+                :message "Invalid tag name"
+                :occurred {:row 1 :column 1}}
+               (-> (parse-variable-tag reader initial-state)
+                   :error))))
+
+    (with-open [reader (test-reader "{{foo bar" 2)]
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
+                :message "Invalid tag name"
+                :occurred {:row 1 :column 1}}
+               (-> (parse-variable-tag reader initial-state)
+                   :error))))))
+
+(t/deftest parse*-test
+  (with-open [r (test-reader "Hello, world")]
+    (let [{:keys [ast error]} (p/parse* r {})]
+      (t/is (= (ast/syntax-tree
+                [(ast/text "Hello," (ast/template-context default-delimiters
+                                                          1
+                                                          1
+                                                          true))
+                 (ast/whitespace " " (ast/template-context default-delimiters
+                                                           1
+                                                           7
+                                                           false))
+                 (ast/text "world" (ast/template-context default-delimiters
+                                                         1
+                                                         8
+                                                         false))])
+               ast))
+
+      (t/is (nil? error))))
+
+  (with-open [r (test-reader "Hello, {{name}}")]
+    (let [{:keys [ast error]} (p/parse* r {})]
+      (t/is (= (ast/syntax-tree
+                [(ast/text "Hello," (ast/template-context default-delimiters
+                                                          1
+                                                          1
+                                                          true))
+                 (ast/whitespace " " (ast/template-context default-delimiters
+                                                           1
+                                                           7
+                                                           false))
+                 (ast/variable-tag ["name"] (ast/template-context default-delimiters
+                                                                  1
+                                                                  8
+                                                                  false))])
+               ast))
+
+      (t/is (nil? error))))
+
+  (with-open [r (test-reader "Hello, {{name")]
+    (let [{:keys [ast error]} (p/parse* r {})]
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
+                :message "Unclosed tag"
+                :occurred {:row 1 :column 8}}
+               error)))))

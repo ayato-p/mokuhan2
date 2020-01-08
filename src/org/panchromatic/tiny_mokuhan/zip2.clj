@@ -20,5 +20,8 @@
               make-node
               (ast/syntax-tree)))
 
+(defn complete [loc]
+  (zip/root loc))
+
 (defn append-primitive [loc primitive]
   (zip/append-child loc primitive))
