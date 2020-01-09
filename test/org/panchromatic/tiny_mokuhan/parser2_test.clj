@@ -1,11 +1,11 @@
 (ns org.panchromatic.tiny-mokuhan.parser2-test
   (:require [clojure.string :as str]
             [clojure.test :as t]
+            [clojure.zip :as zip]
             [org.panchromatic.tiny-mokuhan.ast2 :as ast]
             [org.panchromatic.tiny-mokuhan.parser2 :as p]
             [org.panchromatic.tiny-mokuhan.reader :as reader]
-            [org.panchromatic.tiny-mokuhan.zip2 :as mzip]
-            [clojure.zip :as zip]))
+            [org.panchromatic.tiny-mokuhan.zip2 :as mzip]))
 
 (defmacro import-private-var
   ([qsym]
@@ -345,8 +345,8 @@
 
 (t/deftest parse*-test
   (t/testing "Successes"
-    (with-open [r (test-reader "Hello, world")]
-      (let [{:keys [ast error]} (p/parse* r {})]
+    (with-open [r (test-reader "Hello, world" 3)]
+      (let [{:keys [ast error]} (p/parse* r initial-state)]
         (t/is (= (ast/syntax-tree
                   [(ast/text "Hello," (ast/template-context default-delimiters
                                                             1
@@ -364,8 +364,8 @@
 
         (t/is (nil? error))))
 
-    (with-open [r (test-reader "Hello, {{name}}")]
-      (let [{:keys [ast error]} (p/parse* r {})]
+    (with-open [r (test-reader "Hello, {{name}}" 3)]
+      (let [{:keys [ast error]} (p/parse* r initial-state)]
         (t/is (= (ast/syntax-tree
                   [(ast/text "Hello," (ast/template-context default-delimiters
                                                             1
@@ -384,8 +384,8 @@
         (t/is (nil? error)))))
 
   (t/testing "Errors"
-    (with-open [r (test-reader "Hello, {{name")]
-      (let [{:keys [ast error]} (p/parse* r {})]
+    (with-open [r (test-reader "Hello, {{name" 3)]
+      (let [{:keys [ast error]} (p/parse* r initial-state)]
         (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
                   :message "Unclosed tag"
                   :occurred {:row 1 :column 8}}

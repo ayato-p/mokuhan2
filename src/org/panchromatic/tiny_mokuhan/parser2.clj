@@ -1,5 +1,6 @@
 (ns org.panchromatic.tiny-mokuhan.parser2
-  (:require [org.panchromatic.tiny-mokuhan.ast2 :as ast]
+  (:require [clojure.java.io :as io]
+            [org.panchromatic.tiny-mokuhan.ast2 :as ast]
             [org.panchromatic.tiny-mokuhan.reader :as reader]
             [org.panchromatic.tiny-mokuhan.util.misc :as umisc]
             [org.panchromatic.tiny-mokuhan.zip2 :as mzip]))
@@ -183,41 +184,40 @@
                :occurred (-> (get-in state [:template-context])
                              (select-keys [:row :column]))}})))
 
+(defn parse* [^java.io.PushbackReader reader state]
+  (loop [reader reader
+         {:keys [error] :as state} state]
+    (if error
+      state
+      (let [open-delim (get-in state [:template-context :delimiters :open])]
+        (if-let [c (reader/read-char reader)]
+          (do
+            (reader/unread-char reader c)
+            (if (and (= (.charAt open-delim 0) c)
+                     (lookahead-and-matched? reader (subs open-delim 1)))
+              (recur reader (parse-variable-tag reader state))
+              (case c
+                (\return \newline)
+                (recur reader (parse-newline reader state))
+                (\space \tab)
+                (recur reader (parse-whitespace reader state))
+                (recur reader (parse-text reader state)))))
+          (update state :ast mzip/complete))))))
+
 (def default-parse-options
   {:delimiters {:open "{{" :close "}}"}})
 
-(defn parse* [^java.io.Reader reader options]
-  (let [{:keys [delimiters] :as optins} (umisc/deep-merge default-parse-options options)
-        state {:ast (mzip/ast-zip)
-               :template-context {:delimiters delimiters :row 1 :column 1 :standalone? true}}]
-    (with-open [reader (reader/pushback-reader reader (.length (:open delimiters)))]
-      (loop [reader reader
-             {:keys [error] :as state} state]
-        (if error
-          state
-          (let [open-delim (get-in state [:template-context :delimiters :open])]
-            (if-let [c (reader/read-char reader)]
-              (do
-                (reader/unread-char reader c)
-                (if (and (= (.charAt open-delim 0) c)
-                         (lookahead-and-matched? reader (subs open-delim 1)))
-                  (recur reader (parse-variable-tag reader state))
-                  (case c
-                    (\return \newline)
-                    (recur reader (parse-newline reader state))
-                    (\space \tab)
-                    (recur reader (parse-whitespace reader state))
-                    (recur reader (parse-text reader state)))))
-              (update state :ast mzip/complete))))))))
+(defn- make-initial-state
+  [{:keys [delimiters] :as options}]
+  (let [state {:ast (mzip/ast-zip)
+               :template-context {:delimiters delimiters
+                                  :row 1
+                                  :column 1
+                                  :standalone? true}}]
+    state))
 
-(defprotocol Parsable
-  (parse [this] [this options]))
-
-(extend-protocol Parsable
-  java.lang.String
-  (parse
-    ([s]
-     (parse s default-parse-options))
-    ([s options]
-     (with-open [reader (java.io.StringReader. s)]
-       (parse* reader options)))))
+(defn parse [x options]
+  (let [options (umisc/deep-merge default-parse-options options)
+        open-delim (get-in options [:delimiters :open])]
+    (with-open [reader (reader/pushback-reader (io/reader x) (inc (.length open-delim)))]
+      (parse* reader (make-initial-state options)))))
