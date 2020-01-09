@@ -39,7 +39,7 @@
        (get-in tc [:delims :close])))
 
 (defn unescaped-variable-tag [keys template-context]
-  {:type ::variable-tag
+  {:type ::unescaped-variable-tag
    :ks keys
    :tc template-context})
 

@@ -165,6 +165,24 @@
                :occurred (-> (get-in state [:template-context])
                              (select-keys [:row :column]))}})))
 
+(defn parse-unescaped-variable-tag [reader state]
+  (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
+        _ (reader/skip reader (.length open-delim))
+        ensure-unescaped-variable? (= \& (reader/read-char reader))
+        {:keys [ks read-cnt err]} (read-keys reader close-delim)
+        _ (reader/skip reader (.length close-delim))]
+    (if (and ensure-unescaped-variable? (nil? err))
+      (let [unescaped-variable-tag-node (ast/unescaped-variable-tag ks (state->template-context state))]
+        (-> state
+            (update-in [:ast] mzip/append-primitive unescaped-variable-tag-node)
+            (update-in [:template-context :column] + (.length open-delim) 1 read-cnt (.length close-delim))
+            (assoc-in [:template-context :standalone?] false)))
+
+      {:error {:type :org.panchromatic.tiny-mokuhan/parse-unescaped-variable-tag-error
+               :message err
+               :occurred (-> (get-in state [:template-context])
+                             (select-keys [:row :column]))}})))
+
 (def default-parse-options
   {:delimiters {:open "{{" :close "}}"}})
 

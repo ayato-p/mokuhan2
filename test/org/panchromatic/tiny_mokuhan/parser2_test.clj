@@ -300,48 +300,93 @@
                (-> (parse-variable-tag reader initial-state)
                    :error))))))
 
-(t/deftest parse*-test
-  (with-open [r (test-reader "Hello, world")]
-    (let [{:keys [ast error]} (p/parse* r {})]
-      (t/is (= (ast/syntax-tree
-                [(ast/text "Hello," (ast/template-context default-delimiters
-                                                          1
-                                                          1
-                                                          true))
-                 (ast/whitespace " " (ast/template-context default-delimiters
-                                                           1
-                                                           7
-                                                           false))
-                 (ast/text "world" (ast/template-context default-delimiters
-                                                         1
-                                                         8
-                                                         false))])
-               ast))
+(t/deftest parse-unescaped-variable-tag-test
+  (t/testing "Successes"
+    (with-open [reader (test-reader "{{&foo}}" 3)]
+      (t/is (= {:ast (ast/syntax-tree
+                      [(ast/unescaped-variable-tag ["foo"] (ast/template-context default-delimiters
+                                                                                 1
+                                                                                 1
+                                                                                 true))])
+                :template-context {:delimiters default-delimiters
+                                   :row 1
+                                   :column 9
+                                   :standalone? false}}
+               (-> (p/parse-unescaped-variable-tag reader initial-state)
+                   (update :ast mzip/complete)))))
 
-      (t/is (nil? error))))
+    (with-open [reader (test-reader "{{& foo }}" 3)]
+      (t/is (= {:ast (ast/syntax-tree
+                      [(ast/unescaped-variable-tag ["foo"] (ast/template-context default-delimiters
+                                                                                 1
+                                                                                 1
+                                                                                 true))])
+                :template-context {:delimiters default-delimiters
+                                   :row 1
+                                   :column 11
+                                   :standalone? false}}
+               (-> (p/parse-unescaped-variable-tag reader initial-state)
+                   (update :ast mzip/complete))))))
 
-  (with-open [r (test-reader "Hello, {{name}}")]
-    (let [{:keys [ast error]} (p/parse* r {})]
-      (t/is (= (ast/syntax-tree
-                [(ast/text "Hello," (ast/template-context default-delimiters
-                                                          1
-                                                          1
-                                                          true))
-                 (ast/whitespace " " (ast/template-context default-delimiters
-                                                           1
-                                                           7
-                                                           false))
-                 (ast/variable-tag ["name"] (ast/template-context default-delimiters
-                                                                  1
-                                                                  8
-                                                                  false))])
-               ast))
-
-      (t/is (nil? error))))
-
-  (with-open [r (test-reader "Hello, {{name")]
-    (let [{:keys [ast error]} (p/parse* r {})]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
+  (t/testing "Errors"
+    (with-open [reader (test-reader "{{&foo")]
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-unescaped-variable-tag-error
                 :message "Unclosed tag"
-                :occurred {:row 1 :column 8}}
-               error)))))
+                :occurred {:row 1 :column 1}}
+               (-> (p/parse-unescaped-variable-tag reader initial-state)
+                   :error))))
+
+    (with-open [reader (test-reader "{{&fo o")]
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-unescaped-variable-tag-error
+                :message "Invalid tag name"
+                :occurred {:row 1 :column 1}}
+               (-> (p/parse-unescaped-variable-tag reader initial-state)
+                   :error))))))
+
+(t/deftest parse*-test
+  (t/testing "Successes"
+    (with-open [r (test-reader "Hello, world")]
+      (let [{:keys [ast error]} (p/parse* r {})]
+        (t/is (= (ast/syntax-tree
+                  [(ast/text "Hello," (ast/template-context default-delimiters
+                                                            1
+                                                            1
+                                                            true))
+                   (ast/whitespace " " (ast/template-context default-delimiters
+                                                             1
+                                                             7
+                                                             false))
+                   (ast/text "world" (ast/template-context default-delimiters
+                                                           1
+                                                           8
+                                                           false))])
+                 ast))
+
+        (t/is (nil? error))))
+
+    (with-open [r (test-reader "Hello, {{name}}")]
+      (let [{:keys [ast error]} (p/parse* r {})]
+        (t/is (= (ast/syntax-tree
+                  [(ast/text "Hello," (ast/template-context default-delimiters
+                                                            1
+                                                            1
+                                                            true))
+                   (ast/whitespace " " (ast/template-context default-delimiters
+                                                             1
+                                                             7
+                                                             false))
+                   (ast/variable-tag ["name"] (ast/template-context default-delimiters
+                                                                    1
+                                                                    8
+                                                                    false))])
+                 ast))
+
+        (t/is (nil? error)))))
+
+  (t/testing "Errors"
+    (with-open [r (test-reader "Hello, {{name")]
+      (let [{:keys [ast error]} (p/parse* r {})]
+        (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
+                  :message "Unclosed tag"
+                  :occurred {:row 1 :column 8}}
+                 error))))))
