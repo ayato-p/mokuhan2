@@ -387,3 +387,77 @@
                   :message "Unclosed tag"
                   :occurred {:row 1 :column 8}}
                  error))))))
+
+(t/deftest parse|standalone-test
+  (with-open [reader (test-reader "{{x}}" 3)]
+    (t/is (= (ast/syntax-tree
+              [(ast/variable-tag ["x"] (ast/template-context default-delimiters
+                                                             1
+                                                             1
+                                                             true))])
+             (-> (sut/parse reader initial-state)
+                 :ast))))
+
+  (with-open [reader (test-reader " {{x}} " 3)]
+    (t/is (= (ast/syntax-tree
+              [(ast/whitespace " " (ast/template-context default-delimiters
+                                                         1
+                                                         1
+                                                         false))
+               (ast/variable-tag ["x"] (ast/template-context default-delimiters
+                                                             1
+                                                             2
+                                                             true))
+               (ast/whitespace " " (ast/template-context default-delimiters
+                                                         1
+                                                         7
+                                                         false))])
+             (-> (sut/parse reader initial-state)
+                 :ast))))
+
+  (with-open [reader (test-reader "{{x}}\n{{y}}" 3)]
+    (t/is (= (ast/syntax-tree
+              [(ast/variable-tag ["x"] (ast/template-context default-delimiters
+                                                             1
+                                                             1
+                                                             true))
+               (ast/newline "\n" (ast/template-context default-delimiters
+                                                       1
+                                                       6
+                                                       false))
+               (ast/variable-tag ["y"] (ast/template-context default-delimiters
+                                                             2
+                                                             1
+                                                             true))])
+             (-> (sut/parse reader initial-state)
+                 :ast))))
+
+  (with-open [reader (test-reader "x{{x}} " 3)]
+    (t/is (= (ast/syntax-tree
+              [(ast/text "x" (ast/template-context default-delimiters
+                                                   1
+                                                   1
+                                                   false))
+               (ast/variable-tag ["x"] (ast/template-context default-delimiters
+                                                             1
+                                                             2
+                                                             false))
+               (ast/whitespace " " (ast/template-context default-delimiters
+                                                         1
+                                                         7
+                                                         false))])
+             (-> (sut/parse reader initial-state)
+                 :ast))))
+
+  (with-open [reader (test-reader "{{foo}}{{bar}}" 3)]
+    (t/is (= (ast/syntax-tree
+              [(ast/variable-tag ["foo"] (ast/template-context default-delimiters
+                                                               1
+                                                               1
+                                                               false))
+               (ast/variable-tag ["bar"] (ast/template-context default-delimiters
+                                                               1
+                                                               8
+                                                               false))])
+             (-> (sut/parse reader initial-state)
+                 :ast)))))

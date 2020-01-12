@@ -22,10 +22,16 @@
 (defn template-context
   [{:keys [open close] :as delimiters} row-num col-num standalone?]
   {:type ::template-context
-   :delims delimiters
+   :delimiters delimiters
    :row row-num
    :column col-num
    :standalone? standalone?})
+
+(defn standalone? [node]
+  (get-in node [:tc :standalone?]))
+
+(defn update-standalone [node new-val]
+  (assoc-in node [:tc :standalone?] new-val))
 
 (defn variable-tag [keys template-context]
   {:type ::variable-tag
@@ -34,9 +40,9 @@
 
 (defn variable-tag->mustache-str
   [{:keys [ks tc] :as v-tag}]
-  (str (get-in tc [:delims :open])
+  (str (get-in tc [:delimiters :open])
        (str/join "." ks)
-       (get-in tc [:delims :close])))
+       (get-in tc [:delimiters :close])))
 
 (defn unescaped-variable-tag [keys template-context]
   {:type ::unescaped-variable-tag
@@ -45,9 +51,9 @@
 
 (defn unescaped-variable-tag->mustache-str
   [{:keys [ks tc] :as un-v-tag}]
-  (str (get-in tc [:delims :open]) "&"
+  (str (get-in tc [:delimiters :open]) "&"
        (str/join "." ks)
-       (get-in tc [:delims :close])))
+       (get-in tc [:delimiters :close])))
 
 (defn open-section-tag [keys template-context]
   {:type ::open-section-tag
@@ -56,9 +62,9 @@
 
 (defn open-section-tag->mustache-str
   [{:keys [ks tc] :as o-sec-tag}]
-  (str (get-in tc [:delims :open]) "#"
+  (str (get-in tc [:delimiters :open]) "#"
        (str/join "." ks)
-       (get-in tc [:delims :close])))
+       (get-in tc [:delimiters :close])))
 
 (defn close-section-tag [keys template-context]
   {:type ::close-section-tag
@@ -67,9 +73,9 @@
 
 (defn close-section-tag->mustache-str
   [{:keys [ks tc] :as c-sec-tag}]
-  (str (get-in tc [:delims :open]) "/"
+  (str (get-in tc [:delimiters :open]) "/"
        (str/join "." ks)
-       (get-in tc [:delims :close])))
+       (get-in tc [:delimiters :close])))
 
 (defn section
   ([]
@@ -98,9 +104,9 @@
 
 (defn open-inverted-section-tag->mustache-str
   [{:keys [ks tc]}]
-  (str (get-in tc [:delims :open]) "^"
+  (str (get-in tc [:delimiters :open]) "^"
        (str/join "." ks)
-       (get-in tc [:delims :close])))
+       (get-in tc [:delimiters :close])))
 
 (defn close-inverted-section-tag [keys template-context]
   {:type ::close-inverted-section-tag
@@ -109,9 +115,9 @@
 
 (defn close-inverted-section-tag->mustache-str
   [{:keys [ks tc] :as c-in-sec-tag}]
-  (str (get-in tc [:delims :open]) "/"
+  (str (get-in tc [:delimiters :open]) "/"
        (str/join "." ks)
-       (get-in tc [:delims :close])))
+       (get-in tc [:delimiters :close])))
 
 (defn inverted-section
   ([]
@@ -140,24 +146,24 @@
 
 (defn partial->mustache-str
   [{:keys [tc k]}]
-  (str (get-in tc [:delims :open]) ">"
+  (str (get-in tc [:delimiters :open]) ">"
        k
-       (get-in tc [:delims :close])))
+       (get-in tc [:delimiters :close])))
 
 (defn set-delimiter [delimiters template-context]
   {:type ::set-delimiter
-   :delims delimiters
+   :delimiters delimiters
    :tc template-context})
 
 (defn set-delimiter->mustache-str
-  [{:keys [delims tc]}]
-  (str (get-in tc [:delims :open])
+  [{:keys [delimiters tc]}]
+  (str (get-in tc [:delimiters :open])
        "="
-       (get-in delims [:open])
+       (get-in delimiters [:open])
        " "
-       (get-in delims [:close])
+       (get-in delimiters [:close])
        "="
-       (get-in tc [:delims :close])))
+       (get-in tc [:delimiters :close])))
 
 (defn text [content template-context]
   {:type ::text

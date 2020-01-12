@@ -13,10 +13,9 @@
                       :standalone? true}})
 
 (defn lookahead-and-matched? [reader s]
-  (let [read (repeatedly (ustr/length s) #(reader/read-char reader))
+  (let [read (reader/read-chars reader (ustr/length s))
+        _ (reader/unread-chars reader read)
         matched (= s (apply str read))]
-    (doseq [c (filter some? (reverse read))]
-      (reader/unread-char reader c))
     matched))
 
 (let [extractor (juxt :delimiters :row :column :standalone?)]
@@ -30,13 +29,15 @@
     (if-let [c (and text? (reader/read-char reader))]
       (cond
         (contains? #{\space \tab \return \newline} c)
-        (do (reader/unread-char reader c)
-            (recur sb false))
+        (do
+          (reader/unread-char reader c)
+          (recur sb false))
 
         (= (ustr/char-at open-delim 0) c)
         (if (lookahead-and-matched? reader (subs open-delim 1))
-          (do (reader/unread-char reader c)
-              (recur sb false))
+          (do
+            (reader/unread-char reader c)
+            (recur sb false))
           (recur (ustr/append sb c) text?))
 
         :else
@@ -52,11 +53,11 @@
         (assoc-in [:template-context :standalone?] false))))
 
 (defn- read-whitespace [reader]
-  (loop [^StringBuilder sb (ustr/string-builder)
+  (loop [sb (ustr/string-builder)
          whitespace? true]
     (let [c (and whitespace? (reader/read-char reader))]
       (case c
-        (\space \tab)
+        (\space \tab \　)
         (recur (.append sb c) whitespace?)
         (do
           (when c (reader/unread-char reader c))
@@ -127,7 +128,7 @@
         (nil? c)
         {:err "Unclosed tag"}
 
-        (contains? #{\space \tab \　} c)
+        (contains? #{\space \tab} c)
         (recur sb
                (next-read-keys-state state :read-ws)
                (update result :read-cnt inc))
@@ -167,7 +168,7 @@
     (if-not err
       (let [variable-tag-node (ast/variable-tag ks (state->template-context state))]
         (-> state
-            (update-in [:ast] mzip/append-primitive variable-tag-node)
+            (update-in [:ast] mzip/append-tag variable-tag-node)
             (update-in [:template-context :column] + (ustr/length open-delim) read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
@@ -185,7 +186,7 @@
     (if (and ensure-unescaped-variable? (nil? err))
       (let [unescaped-variable-tag-node (ast/unescaped-variable-tag ks (state->template-context state))]
         (-> state
-            (update-in [:ast] mzip/append-primitive unescaped-variable-tag-node)
+            (update-in [:ast] mzip/append-tag unescaped-variable-tag-node)
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
