@@ -94,3 +94,37 @@
                  (mzip/append-primitive nl)
                  (mzip/append-tag v2)
                  mzip/complete)))))
+
+(t/deftest append&into-section-test
+  (let [loc (-> (mzip/ast-zip)
+                mzip/append&into-section)]
+    (t/is (= (ast/syntax-tree
+              [(ast/section)])
+             (mzip/complete loc)))
+
+    (t/is (= ::ast/section
+             (:type (zip/node loc))))))
+
+(t/deftest out-section-test
+  (t/is (= ::ast/syntax-tree
+           (-> (mzip/ast-zip)
+               mzip/append&into-sections
+               mzip/out-section
+               zip/node
+               :type))))
+
+(t/deftest assoc-open-section-tag-test
+  (t/is (= (ast/syntax-tree
+            [(ast/section
+              (ast/open-section-tag ["x"] (ast/template-context default-delimiters
+                                                                1
+                                                                1
+                                                                true)))])
+           (let [open-tag (ast/open-section-tag ["x"] (ast/template-context default-delimiters
+                                                                            1
+                                                                            1
+                                                                            true))]
+             (-> (mzip/ast-zip)
+                 mzip/append&into-section
+                 (mzip/assoc-open-section-tag open-tag)
+                 mzip/complete)))))

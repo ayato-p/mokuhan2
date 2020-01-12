@@ -80,6 +80,8 @@
 (defn section
   ([]
    (section nil nil))
+  ([open-tag]
+   (section open-tag nil []))
   ([open-tag close-tag]
    (section open-tag close-tag []))
   ([open-tag close-tag nodes]
@@ -87,6 +89,12 @@
     :o-tag open-tag
     :c-tag close-tag
     :nodes nodes}))
+
+(defn assoc-open-section-tag [section open-tag]
+  (assoc section :o-tag open-tag))
+
+(defn assoc-close-section-tag [section close-tag]
+  (assoc section :c-tag close-tag))
 
 (defn section->mustache-str
   [{:keys [o-tag c-tag nodes]}]

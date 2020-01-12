@@ -195,6 +195,34 @@
                :occurred (-> (get-in state [:template-context])
                              (select-keys [:row :column]))}})))
 
+(defn- read-delimiter [reader delim]
+  (->> (ustr/length delim)
+       (reader/read-chars reader)
+       (keep identity)
+       (apply str)))
+
+(defn parse-open-section-tag [reader state]
+  (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
+        _ (read-delimiter reader open-delim)
+        ensure-open-section? (= \# (reader/read-char reader))
+        {:keys [ks read-cnt err]} (read-keys reader close-delim)
+        _ (read-delimiter reader close-delim)]
+    (if (and ensure-open-section? (nil? err))
+      (let [open-section-tag-node (ast/open-section-tag ks (state->template-context state))]
+        (-> state
+            (update-in [:ast] mzip/append&into-section)
+            (update-in [:ast] mzip/assoc-open-section-tag open-section-tag-node)
+            (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
+            (assoc-in [:template-context :standalone?] false)))
+
+      {:error {:type :org.panchromatic.tiny-mokuhan/parse-open-section-tag-error
+               :message err
+               :occurred (-> (get-in state [:template-context])
+                             (select-keys [:row :column]))}})))
+
+#_(defn parse-close-section-tag [reader state]
+    (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])]))
+
 (let [ws #{\space \tab \　}]
   (defn- whitespace? [c]
     (contains? ws c)))
@@ -202,12 +230,6 @@
 (let [nl #{\return \newline}]
   (defn- newline? [c]
     (contains? nl c)))
-
-(defn- read-open-delim [reader open-delim]
-  (->> (ustr/length open-delim)
-       (reader/read-chars reader)
-       (keep identity)
-       (apply str)))
 
 (defn parse [^java.io.PushbackReader reader state]
   (loop [reader reader
@@ -229,7 +251,7 @@
           (update state :ast mzip/complete)
 
           (= (ustr/char-at open-delim 0) c)
-          (let [open-delim' (read-open-delim reader open-delim)
+          (let [open-delim' (read-delimiter reader open-delim)
                 sigil (reader/read-char reader)
                 _ (reader/unread-chars reader (cond-> open-delim' sigil (str sigil)))]
             (if (= open-delim open-delim')

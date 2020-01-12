@@ -35,5 +35,19 @@
         (zip/up loc)
         (recur (zip/edit (zip/left loc) ast/update-standalone false))))))
 
+(defn append&into-section [loc]
+  (-> loc
+      (zip/append-child (ast/section))
+      zip/down
+      zip/rightmost))
+
+(defn out-section [loc]
+  (zip/up loc))
+
+(defn assoc-open-section-tag [loc tag]
+  (zip/edit loc ast/assoc-open-section-tag tag))
+
+#_(defn assoc-close-section-tag [loc])
+
 (defn complete [loc]
   (zip/root loc))

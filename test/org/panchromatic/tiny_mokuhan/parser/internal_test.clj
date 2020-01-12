@@ -314,6 +314,42 @@
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
                    :error))))))
 
+(t/deftest parse-open-section-tag-test
+  (t/testing "Successes"
+    (with-open [r (test-reader "{{#foo}}" 3)]
+      (let [state (sut/parse-open-section-tag r initial-state)]
+        (t/is (= {:ast (ast/syntax-tree
+                        [(ast/section
+                          (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
+                                                                              1
+                                                                              1
+                                                                              true)))])
+                  :template-context {:delimiters default-delimiters
+                                     :row 1
+                                     :column 9
+                                     :standalone? false}}
+                 (update state :ast mzip/complete)))
+
+        (t/is (= ::ast/section
+                 (:type (zip/node (:ast state)))))
+
+        (t/is (= "" (slurp r))))))
+
+  (t/testing "Errors"
+    (with-open [reader (test-reader "{{#foo")]
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-open-section-tag-error
+                :message "Unclosed tag"
+                :occurred {:row 1 :column 1}}
+               (-> (sut/parse-open-section-tag reader initial-state)
+                   :error))))
+
+    (with-open [reader (test-reader "{{#fo o")]
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-open-section-tag-error
+                :message "Invalid tag name"
+                :occurred {:row 1 :column 1}}
+               (-> (sut/parse-open-section-tag reader initial-state)
+                   :error))))))
+
 (t/deftest parse-test
   (t/testing "Successes"
     (with-open [r (test-reader "Hello, world" 3)]
