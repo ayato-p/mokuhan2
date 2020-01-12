@@ -18,7 +18,10 @@
   (let [rdr (gen-rdr "Hello")]
     (t/is (= [\H \e] (sut/read-chars rdr 2)))
     (t/is (= [\l \l] (sut/read-chars rdr 2)))
-    (t/is (= [\o nil] (sut/read-chars rdr 2)))))
+    (t/is (= [\o nil] (sut/read-chars rdr 2))))
+
+  (let [rdr (gen-rdr "Hello")]
+    (t/is (= [] (sut/read-chars rdr 0)))))
 
 (t/deftest unread-char-test
   (let [rdr (sut/pushback-reader (gen-rdr "") 5)]

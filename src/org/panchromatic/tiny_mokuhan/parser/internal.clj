@@ -194,23 +194,50 @@
                :occurred (-> (get-in state [:template-context])
                              (select-keys [:row :column]))}})))
 
+(let [ws #{\space \tab \　}]
+  (defn- whitespace? [c]
+    (contains? ws c)))
+
+(let [nl #{\return \newline}]
+  (defn- newline? [c]
+    (contains? nl c)))
+
+(defn- read-open-delim [reader open-delim]
+  (->> (ustr/length open-delim)
+       (reader/read-chars reader)
+       (keep identity)
+       (apply str)))
+
 (defn parse [^java.io.PushbackReader reader state]
   (loop [reader reader
          {:keys [error] :as state} state]
     (if error
       state
-      (let [open-delim (get-in state [:template-context :delimiters :open])]
-        (if-let [c (reader/read-char reader)]
-          (do
-            (reader/unread-char reader c)
-            (if  (= (ustr/char-at open-delim 0) c)
-              (do
-                (lookahead-and-matched? reader (subs open-delim 1))
+      (let [open-delim (get-in state [:template-context :delimiters :open])
+            ;; for choosing a parser
+            c (reader/read-char reader)
+            _ (reader/unread-char reader c)]
+        (cond
+          (whitespace? c)
+          (recur reader (parse-whitespace reader state))
+
+          (newline? c)
+          (recur reader (parse-newline reader state))
+
+          (nil? c)
+          (update state :ast mzip/complete)
+
+          (= (ustr/char-at open-delim 0) c)
+          (let [open-delim' (read-open-delim reader open-delim)
+                sigil (reader/read-char reader)
+                _ (reader/unread-chars reader (cond-> open-delim' sigil (str sigil)))]
+            (if (= open-delim open-delim')
+              (case sigil
+                \&
+                (recur reader (parse-unescaped-variable-tag reader state))
                 (recur reader (parse-variable-tag reader state)))
-              (case c
-                (\return \newline)
-                (recur reader (parse-newline reader state))
-                (\space \tab)
-                (recur reader (parse-whitespace reader state))
-                (recur reader (parse-text reader state)))))
-          (update state :ast mzip/complete))))))
+
+              (recur reader (parse-text reader state))))
+
+          :else
+          (recur reader (parse-text reader state)))))))

@@ -335,6 +335,25 @@
 
         (t/is (nil? error))))
 
+    (with-open [r (test-reader "{Hello}, {{name}}" 3)]
+      (let [{:keys [ast error]} (sut/parse r initial-state)]
+        (t/is (= (ast/syntax-tree
+                  [(ast/text "{Hello}," (ast/template-context default-delimiters
+                                                              1
+                                                              1
+                                                              true))
+                   (ast/whitespace " " (ast/template-context default-delimiters
+                                                             1
+                                                             9
+                                                             false))
+                   (ast/variable-tag ["name"] (ast/template-context default-delimiters
+                                                                    1
+                                                                    10
+                                                                    false))])
+                 ast))
+
+        (t/is (nil? error))))
+
     (with-open [r (test-reader "Hello, {{name}}" 3)]
       (let [{:keys [ast error]} (sut/parse r initial-state)]
         (t/is (= (ast/syntax-tree
@@ -358,6 +377,13 @@
     (with-open [r (test-reader "Hello, {{name" 3)]
       (let [{:keys [ast error]} (sut/parse r initial-state)]
         (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
+                  :message "Unclosed tag"
+                  :occurred {:row 1 :column 8}}
+                 error))))
+
+    (with-open [r (test-reader "Hello, {{&name" 3)]
+      (let [{:keys [ast error]} (sut/parse r initial-state)]
+        (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-unescaped-variable-tag-error
                   :message "Unclosed tag"
                   :occurred {:row 1 :column 8}}
                  error))))))

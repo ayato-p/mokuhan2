@@ -23,7 +23,8 @@
 
 (defn unread-char
   [^java.io.PushbackReader rdr char]
-  (.unread rdr (int char)))
+  (when char
+    (.unread rdr (int char))))
 
 (defn unread-chars
   [^java.io.PushbackReader rdr chrs]
