@@ -10,7 +10,8 @@
    :template-context {:delimiters delimiters
                       :row 1
                       :column 1
-                      :standalone? true}})
+                      :standalone? true
+                      :context '()}})
 
 (defn lookahead-and-matched? [reader s]
   (let [read (reader/read-chars reader (ustr/length s))
@@ -212,6 +213,7 @@
         (-> state
             (update-in [:ast] mzip/append&into-section)
             (update-in [:ast] mzip/assoc-open-section-tag open-section-tag-node)
+            (update-in [:template-context :context] conj ks)
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
@@ -222,18 +224,28 @@
 
 (defn parse-close-section-tag [reader state]
   (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
+        [current-context & rest-contexts] (get-in state [:template-context :context])
         _ (read-delimiter reader open-delim)
         ensure-close-section? (= \/ (reader/read-char reader))
         {:keys [ks read-cnt err]} (read-keys reader close-delim)
         _ (read-delimiter reader close-delim)]
-    (if (and ensure-close-section? (nil? err))
+    (cond
+      (and ensure-close-section? (= current-context ks) (nil? err))
       (let [close-section-tag-node (ast/close-section-tag ks (state->template-context state))]
         (-> state
             (update-in [:ast] mzip/assoc-close-section-tag close-section-tag-node)
             (update-in [:ast] mzip/out-section)
+            (update-in [:template-context :context] pop)
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
+      (not= current-context ks)
+      {:error {:type :org.panchromatic.tiny-mokuhan/parse-close-section-tag-error
+               :detail :unclosed-section
+               :occurred (-> (get-in state [:template-context])
+                             (select-keys [:row :column :context]))}}
+
+      :else
       {:error {:type :org.panchromatic.tiny-mokuhan/parse-close-section-tag-error
                :message err
                :occurred (-> (get-in state [:template-context])

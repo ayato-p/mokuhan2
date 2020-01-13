@@ -5,7 +5,8 @@
             [org.panchromatic.tiny-mokuhan.ast2 :as ast]
             [org.panchromatic.tiny-mokuhan.parser.internal :as sut]
             [org.panchromatic.tiny-mokuhan.reader :as reader]
-            [org.panchromatic.tiny-mokuhan.zip2 :as mzip]))
+            [org.panchromatic.tiny-mokuhan.zip2 :as mzip]
+            [org.panchromatic.tiny-mokuhan.util.string :as ustr]))
 
 (defn- test-reader
   ([s]
@@ -21,7 +22,8 @@
    :template-context {:delimiters default-delimiters
                       :row 1
                       :column 1
-                      :standalone? true}})
+                      :standalone? true
+                      :context '()}})
 
 (t/deftest lookahead-and-matched?-test
   (with-open [reader (test-reader "{{" 2)]
@@ -51,7 +53,8 @@
                  :template-context {:delimiters default-delimiters
                                     :row 1
                                     :column 6
-                                    :standalone? false}}
+                                    :standalone? false
+                                    :context '()}}
                 (-> (sut/parse-text reader initial-state)
                     (update :ast mzip/complete)))
              (= rest-str (slurp reader))))
@@ -73,7 +76,8 @@
               :template-context {:delimiters default-delimiters
                                  :row 1
                                  :column 10
-                                 :standalone? false}}
+                                 :standalone? false
+                                 :context '()}}
              (-> (sut/parse-text reader initial-state)
                  (update :ast mzip/complete))))
     (t/is (= "" (slurp reader))))
@@ -87,7 +91,8 @@
               :template-context {:delimiters default-delimiters
                                  :row 1
                                  :column 5
-                                 :standalone? false}}
+                                 :standalone? false
+                                 :context '()}}
              (-> (sut/parse-text reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "" (slurp reader)))))
@@ -103,7 +108,8 @@
                  :template-context {:delimiters default-delimiters
                                     :row 1
                                     :column 2
-                                    :standalone? true}}
+                                    :standalone? true
+                                    :context '()}}
                 (-> (sut/parse-whitespace reader initial-state)
                     (update :ast zip/root)))
              (= rest-str (slurp reader))))
@@ -123,7 +129,8 @@
               :template-context {:delimiters default-delimiters
                                  :row 1
                                  :column 3
-                                 :standalone? true}}
+                                 :standalone? true
+                                 :context '()}}
              (-> (sut/parse-whitespace reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "x" (slurp reader)))))
@@ -138,7 +145,8 @@
               :template-context {:delimiters default-delimiters
                                  :row 2
                                  :column 1
-                                 :standalone? true}}
+                                 :standalone? true
+                                 :context '()}}
              (-> (sut/parse-newline reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "x" (slurp reader))))
@@ -152,7 +160,8 @@
               :template-context {:delimiters default-delimiters
                                  :row 2
                                  :column 1
-                                 :standalone? true}}
+                                 :standalone? true
+                                 :context '()}}
              (-> (sut/parse-newline reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "x" (slurp reader)))))
@@ -168,7 +177,8 @@
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 8
-                                   :standalone? false}}
+                                   :standalone? false
+                                   :context '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -183,7 +193,8 @@
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 10
-                                   :standalone? false}}
+                                   :standalone? false
+                                   :context '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -198,7 +209,8 @@
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 12
-                                   :standalone? false}}
+                                   :standalone? false
+                                   :context '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -213,7 +225,8 @@
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 10
-                                   :standalone? false}}
+                                   :standalone? false
+                                   :context '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -228,7 +241,8 @@
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 9
-                                   :standalone? false}}
+                                   :standalone? false
+                                   :context '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -243,7 +257,8 @@
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 8
-                                   :standalone? false}}
+                                   :standalone? false
+                                   :context '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -282,7 +297,8 @@
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 9
-                                   :standalone? false}}
+                                   :standalone? false
+                                   :context '()}}
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
                    (update :ast mzip/complete)))))
 
@@ -295,7 +311,8 @@
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 11
-                                   :standalone? false}}
+                                   :standalone? false
+                                   :context '()}}
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
                    (update :ast mzip/complete))))))
 
@@ -327,7 +344,28 @@
                   :template-context {:delimiters default-delimiters
                                      :row 1
                                      :column 9
-                                     :standalone? false}}
+                                     :standalone? false
+                                     :context '(["foo"])}}
+                 (update state :ast mzip/complete)))
+
+        (t/is (= ::ast/section
+                 (:type (zip/node (:ast state)))))
+
+        (t/is (= "" (slurp r)))))
+
+    (with-open [r (test-reader "{{#foo.bar}}" 3)]
+      (let [state (sut/parse-open-section-tag r initial-state)]
+        (t/is (= {:ast (ast/syntax-tree
+                        [(ast/section
+                          (ast/open-section-tag ["foo" "bar"] (ast/template-context default-delimiters
+                                                                                    1
+                                                                                    1
+                                                                                    true)))])
+                  :template-context {:delimiters default-delimiters
+                                     :row 1
+                                     :column 13
+                                     :standalone? false
+                                     :context '(["foo" "bar"])}}
                  (update state :ast mzip/complete)))
 
         (t/is (= ::ast/section
@@ -350,20 +388,32 @@
                (-> (sut/parse-open-section-tag reader initial-state)
                    :error))))))
 
+(def opened-section-ast
+  (let [open-section-tag-node
+        (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
+                                                            1
+                                                            1
+                                                            false))]
+    (-> (mzip/ast-zip)
+        (mzip/append&into-section)
+        (mzip/assoc-open-section-tag open-section-tag-node))))
+
+(def opened-section-state
+  {:ast opened-section-ast
+   :template-context {:delimiters default-delimiters
+                      :row 1
+                      :column (-> opened-section-ast
+                                  mzip/complete
+                                  ast/syntax-tree->mustache-str
+                                  ustr/length
+                                  inc)
+                      :standalone? false
+                      :context '(["foo"])}})
+
 (t/deftest parse-close-section-tag-test
   (t/testing "Successes"
     (with-open [reader (test-reader "{{/foo}}" 3)]
-      (let [node (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
-                                                                     1
-                                                                     1
-                                                                     false))
-            ast (-> (mzip/ast-zip)
-                    (mzip/append&into-section)
-                    (mzip/assoc-open-section-tag node))
-            state (-> (assoc-in initial-state [:ast] ast)
-                      (assoc-in [:template-context :column] 9)
-                      (assoc-in [:template-context :standalone?] false)
-                      (->> (sut/parse-close-section-tag reader)))]
+      (let [state (sut/parse-close-section-tag reader opened-section-state)]
         (t/is (= {:ast (ast/syntax-tree
                         [(ast/section
                           (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
@@ -378,10 +428,18 @@
                   :template-context {:delimiters default-delimiters
                                      :row 1
                                      :column 17
-                                     :standalone? false}}
+                                     :standalone? false
+                                     :context '()}}
                  (update state :ast mzip/complete))))))
 
-  (t/testing "Errors"))
+  (t/testing "Errors"
+    (with-open [reader (test-reader "{{/bar}}" 3)]
+      (t/is (= {:error {:type :org.panchromatic.tiny-mokuhan/parse-close-section-tag-error
+                        :detail :unclosed-section
+                        :occurred {:row 1
+                                   :column 9
+                                   :context '(["foo"])}}}
+               (sut/parse-close-section-tag reader opened-section-state))))))
 
 (t/deftest parse-test
   (t/testing "Successes"

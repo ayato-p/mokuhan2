@@ -62,9 +62,10 @@
 
 (defn open-section-tag->mustache-str
   [{:keys [ks tc] :as o-sec-tag}]
-  (str (get-in tc [:delimiters :open]) "#"
-       (str/join "." ks)
-       (get-in tc [:delimiters :close])))
+  (when o-sec-tag
+    (str (get-in tc [:delimiters :open]) "#"
+         (str/join "." ks)
+         (get-in tc [:delimiters :close]))))
 
 (defn close-section-tag [keys template-context]
   {:type ::close-section-tag
@@ -73,9 +74,10 @@
 
 (defn close-section-tag->mustache-str
   [{:keys [ks tc] :as c-sec-tag}]
-  (str (get-in tc [:delimiters :open]) "/"
-       (str/join "." ks)
-       (get-in tc [:delimiters :close])))
+  (when c-sec-tag
+    (str (get-in tc [:delimiters :open]) "/"
+         (str/join "." ks)
+         (get-in tc [:delimiters :close]))))
 
 (defn section
   ([]
