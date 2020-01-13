@@ -350,6 +350,39 @@
                (-> (sut/parse-open-section-tag reader initial-state)
                    :error))))))
 
+(t/deftest parse-close-section-tag-test
+  (t/testing "Successes"
+    (with-open [reader (test-reader "{{/foo}}" 3)]
+      (let [node (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
+                                                                     1
+                                                                     1
+                                                                     false))
+            ast (-> (mzip/ast-zip)
+                    (mzip/append&into-section)
+                    (mzip/assoc-open-section-tag node))
+            state (-> (assoc-in initial-state [:ast] ast)
+                      (assoc-in [:template-context :column] 9)
+                      (assoc-in [:template-context :standalone?] false)
+                      (->> (sut/parse-close-section-tag reader)))]
+        (t/is (= {:ast (ast/syntax-tree
+                        [(ast/section
+                          (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
+                                                                              1
+                                                                              1
+                                                                              false))
+                          (ast/close-section-tag ["foo"] (ast/template-context default-delimiters
+                                                                               1
+                                                                               9
+                                                                               false))
+                          [])])
+                  :template-context {:delimiters default-delimiters
+                                     :row 1
+                                     :column 17
+                                     :standalone? false}}
+                 (update state :ast mzip/complete))))))
+
+  (t/testing "Errors"))
+
 (t/deftest parse-test
   (t/testing "Successes"
     (with-open [r (test-reader "Hello, world" 3)]

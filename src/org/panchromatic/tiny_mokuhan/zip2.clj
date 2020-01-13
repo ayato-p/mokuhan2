@@ -14,11 +14,14 @@
 (defn- make-node [node nodes]
   (assoc node :nodes nodes))
 
-(defn ast-zip []
-  (zip/zipper branch?
-              children
-              make-node
-              (ast/syntax-tree)))
+(defn ast-zip
+  ([]
+   (ast-zip (ast/syntax-tree)))
+  ([root]
+   (zip/zipper branch?
+               children
+               make-node
+               root)))
 
 (defn append-primitive [loc primitive]
   (zip/append-child loc primitive))
@@ -47,7 +50,8 @@
 (defn assoc-open-section-tag [loc tag]
   (zip/edit loc ast/assoc-open-section-tag tag))
 
-#_(defn assoc-close-section-tag [loc])
+(defn assoc-close-section-tag [loc tag]
+  (zip/edit loc ast/assoc-close-section-tag tag))
 
 (defn complete [loc]
   (zip/root loc))
