@@ -15,9 +15,8 @@
 
 (defn lookahead-and-matched? [reader s]
   (let [read (reader/read-chars reader (ustr/length s))
-        _ (reader/unread-chars reader read)
-        matched (= s (apply str read))]
-    matched))
+        _ (reader/unread-chars reader read)]
+    (= s (apply str read))))
 
 (let [extractor (juxt :delimiters :row :column :standalone?)]
   (defn- state->template-context [{:keys [template-context] :as state}]
@@ -167,8 +166,13 @@
        (keep identity)
        (apply str)))
 
-(defn parse-variable-tag [reader state]
-  (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
+(defn- parse-error [cause template-context]
+  {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
+           :cause cause
+           :occurred (select-keys template-context [:row :column :contexts])}})
+
+(defn parse-variable-tag [reader {:keys [template-context] :as state}]
+  (let [{open-delim :open close-delim :close} (:delimiters template-context)
         _ (read-delimiter reader open-delim)
         {:keys [ks read-cnt err]} (read-keys reader close-delim)
         _ (read-delimiter reader close-delim)]
@@ -179,13 +183,10 @@
             (update-in [:template-context :column] + (ustr/length open-delim) read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
-      {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
-               :cause err
-               :occurred (-> (get-in state [:template-context])
-                             (select-keys [:row :column]))}})))
+      (parse-error err template-context))))
 
-(defn parse-unescaped-variable-tag [reader state]
-  (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
+(defn parse-unescaped-variable-tag [reader {:keys [template-context] :as state}]
+  (let [{open-delim :open close-delim :close} (:delimiters template-context)
         _ (read-delimiter reader open-delim)
         ensure-unescaped-variable? (= \& (reader/read-char reader))
         {:keys [ks read-cnt err]} (read-keys reader close-delim)
@@ -197,13 +198,10 @@
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
-      {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
-               :cause err
-               :occurred (-> (get-in state [:template-context])
-                             (select-keys [:row :column]))}})))
+      (parse-error err template-context))))
 
-(defn parse-open-section-tag [reader state]
-  (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
+(defn parse-open-section-tag [reader {:keys [template-context] :as state}]
+  (let [{open-delim :open close-delim :close} (:delimiters template-context)
         _ (read-delimiter reader open-delim)
         ensure-open-section? (= \# (reader/read-char reader))
         {:keys [ks read-cnt err]} (read-keys reader close-delim)
@@ -217,12 +215,9 @@
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
-      {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
-               :cause err
-               :occurred (-> (get-in state [:template-context])
-                             (select-keys [:row :column]))}})))
+      (parse-error err template-context))))
 
-(defn parse-close-section-tag [reader state]
+(defn parse-close-section-tag [reader {:keys [template-context] :as state}]
   (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
         [current-context & rest-contexts] (get-in state [:template-context :contexts])
         _ (read-delimiter reader open-delim)
@@ -240,16 +235,10 @@
             (assoc-in [:template-context :standalone?] false)))
 
       (not= current-context ks)
-      {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
-               :cause :unclosed-section
-               :occurred (-> (get-in state [:template-context])
-                             (select-keys [:row :column :contexts]))}}
+      (parse-error :unclosed-section template-context)
 
       :else
-      {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
-               :cause err
-               :occurred (-> (get-in state [:template-context])
-                             (select-keys [:row :column]))}})))
+      (parse-error err template-context))))
 
 (let [ws #{\space \tab \　}]
   (defn- whitespace? [c]
