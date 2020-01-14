@@ -23,7 +23,7 @@
                       :row 1
                       :column 1
                       :standalone? true
-                      :context '()}})
+                      :contexts '()}})
 
 (t/deftest lookahead-and-matched?-test
   (with-open [reader (test-reader "{{" 2)]
@@ -54,7 +54,7 @@
                                     :row 1
                                     :column 6
                                     :standalone? false
-                                    :context '()}}
+                                    :contexts '()}}
                 (-> (sut/parse-text reader initial-state)
                     (update :ast mzip/complete)))
              (= rest-str (slurp reader))))
@@ -77,7 +77,7 @@
                                  :row 1
                                  :column 10
                                  :standalone? false
-                                 :context '()}}
+                                 :contexts '()}}
              (-> (sut/parse-text reader initial-state)
                  (update :ast mzip/complete))))
     (t/is (= "" (slurp reader))))
@@ -92,7 +92,7 @@
                                  :row 1
                                  :column 5
                                  :standalone? false
-                                 :context '()}}
+                                 :contexts '()}}
              (-> (sut/parse-text reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "" (slurp reader)))))
@@ -109,7 +109,7 @@
                                     :row 1
                                     :column 2
                                     :standalone? true
-                                    :context '()}}
+                                    :contexts '()}}
                 (-> (sut/parse-whitespace reader initial-state)
                     (update :ast zip/root)))
              (= rest-str (slurp reader))))
@@ -130,7 +130,7 @@
                                  :row 1
                                  :column 3
                                  :standalone? true
-                                 :context '()}}
+                                 :contexts '()}}
              (-> (sut/parse-whitespace reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "x" (slurp reader)))))
@@ -146,7 +146,7 @@
                                  :row 2
                                  :column 1
                                  :standalone? true
-                                 :context '()}}
+                                 :contexts '()}}
              (-> (sut/parse-newline reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "x" (slurp reader))))
@@ -161,7 +161,7 @@
                                  :row 2
                                  :column 1
                                  :standalone? true
-                                 :context '()}}
+                                 :contexts '()}}
              (-> (sut/parse-newline reader initial-state)
                  (update :ast zip/root))))
     (t/is (= "x" (slurp reader)))))
@@ -178,7 +178,7 @@
                                    :row 1
                                    :column 8
                                    :standalone? false
-                                   :context '()}}
+                                   :contexts '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -194,7 +194,7 @@
                                    :row 1
                                    :column 10
                                    :standalone? false
-                                   :context '()}}
+                                   :contexts '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -210,7 +210,7 @@
                                    :row 1
                                    :column 12
                                    :standalone? false
-                                   :context '()}}
+                                   :contexts '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -226,7 +226,7 @@
                                    :row 1
                                    :column 10
                                    :standalone? false
-                                   :context '()}}
+                                   :contexts '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -242,7 +242,7 @@
                                    :row 1
                                    :column 9
                                    :standalone? false
-                                   :context '()}}
+                                   :contexts '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
@@ -258,30 +258,37 @@
                                    :row 1
                                    :column 8
                                    :standalone? false
-                                   :context '()}}
+                                   :contexts '()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    (update :ast mzip/complete))))
 
       (t/is (= "bar" (slurp reader)))))
 
   (t/testing "Errors"
+    (with-open [reader (test-reader "{{foo>>")]
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+                :cause :unclosed-tag
+                :occurred {:row 1 :column 1}}
+               (-> (sut/parse-variable-tag reader initial-state)
+                   :error))))
+
     (with-open [reader (test-reader "{{foo" 2)]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
-                :message "Unclosed tag"
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+                :cause :unclosed-tag
                 :occurred {:row 1 :column 1}}
                (-> (sut/parse-variable-tag reader initial-state)
                    :error))))
 
     (with-open [reader (test-reader "{{fo o}}" 2)]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
-                :message "Invalid tag name"
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+                :cause :invalid-tag-name
                 :occurred {:row 1 :column 1}}
                (-> (sut/parse-variable-tag reader initial-state)
                    :error))))
 
     (with-open [reader (test-reader "{{foo bar" 2)]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
-                :message "Invalid tag name"
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+                :cause :invalid-tag-name
                 :occurred {:row 1 :column 1}}
                (-> (sut/parse-variable-tag reader initial-state)
                    :error))))))
@@ -298,7 +305,7 @@
                                    :row 1
                                    :column 9
                                    :standalone? false
-                                   :context '()}}
+                                   :contexts '()}}
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
                    (update :ast mzip/complete)))))
 
@@ -312,21 +319,21 @@
                                    :row 1
                                    :column 11
                                    :standalone? false
-                                   :context '()}}
+                                   :contexts '()}}
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
                    (update :ast mzip/complete))))))
 
   (t/testing "Errors"
     (with-open [reader (test-reader "{{&foo")]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-unescaped-variable-tag-error
-                :message "Unclosed tag"
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+                :cause :unclosed-tag
                 :occurred {:row 1 :column 1}}
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
                    :error))))
 
     (with-open [reader (test-reader "{{&fo o")]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-unescaped-variable-tag-error
-                :message "Invalid tag name"
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+                :cause :invalid-tag-name
                 :occurred {:row 1 :column 1}}
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
                    :error))))))
@@ -345,7 +352,7 @@
                                      :row 1
                                      :column 9
                                      :standalone? false
-                                     :context '(["foo"])}}
+                                     :contexts '(["foo"])}}
                  (update state :ast mzip/complete)))
 
         (t/is (= ::ast/section
@@ -365,7 +372,7 @@
                                      :row 1
                                      :column 13
                                      :standalone? false
-                                     :context '(["foo" "bar"])}}
+                                     :contexts '(["foo" "bar"])}}
                  (update state :ast mzip/complete)))
 
         (t/is (= ::ast/section
@@ -375,15 +382,15 @@
 
   (t/testing "Errors"
     (with-open [reader (test-reader "{{#foo")]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-open-section-tag-error
-                :message "Unclosed tag"
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+                :cause :unclosed-tag
                 :occurred {:row 1 :column 1}}
                (-> (sut/parse-open-section-tag reader initial-state)
                    :error))))
 
     (with-open [reader (test-reader "{{#fo o")]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-open-section-tag-error
-                :message "Invalid tag name"
+      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+                :cause :invalid-tag-name
                 :occurred {:row 1 :column 1}}
                (-> (sut/parse-open-section-tag reader initial-state)
                    :error))))))
@@ -408,7 +415,7 @@
                                   ustr/length
                                   inc)
                       :standalone? false
-                      :context '(["foo"])}})
+                      :contexts '(["foo"])}})
 
 (t/deftest parse-close-section-tag-test
   (t/testing "Successes"
@@ -429,16 +436,16 @@
                                      :row 1
                                      :column 17
                                      :standalone? false
-                                     :context '()}}
+                                     :contexts '()}}
                  (update state :ast mzip/complete))))))
 
   (t/testing "Errors"
     (with-open [reader (test-reader "{{/bar}}" 3)]
-      (t/is (= {:error {:type :org.panchromatic.tiny-mokuhan/parse-close-section-tag-error
-                        :detail :unclosed-section
+      (t/is (= {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
+                        :cause :unclosed-section
                         :occurred {:row 1
                                    :column 9
-                                   :context '(["foo"])}}}
+                                   :contexts '(["foo"])}}}
                (sut/parse-close-section-tag reader opened-section-state))))))
 
 (t/deftest parse-test
@@ -503,15 +510,15 @@
   (t/testing "Errors"
     (with-open [r (test-reader "Hello, {{name" 3)]
       (let [{:keys [ast error]} (sut/parse r initial-state)]
-        (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
-                  :message "Unclosed tag"
+        (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+                  :cause :unclosed-tag
                   :occurred {:row 1 :column 8}}
                  error))))
 
     (with-open [r (test-reader "Hello, {{&name" 3)]
       (let [{:keys [ast error]} (sut/parse r initial-state)]
-        (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-unescaped-variable-tag-error
-                  :message "Unclosed tag"
+        (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+                  :cause :unclosed-tag
                   :occurred {:row 1 :column 8}}
                  error))))))
 

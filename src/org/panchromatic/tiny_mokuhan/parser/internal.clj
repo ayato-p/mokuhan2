@@ -11,7 +11,7 @@
                       :row 1
                       :column 1
                       :standalone? true
-                      :context '()}})
+                      :contexts '()}})
 
 (defn lookahead-and-matched? [reader s]
   (let [read (reader/read-chars reader (ustr/length s))
@@ -124,10 +124,10 @@
           result)
 
         (nil? state)
-        {:err "Invalid tag name"}
+        {:err :invalid-tag-name}
 
         (nil? c)
-        {:err "Unclosed tag"}
+        {:err :unclosed-tag}
 
         (contains? #{\space \tab} c)
         (recur sb
@@ -173,8 +173,8 @@
             (update-in [:template-context :column] + (ustr/length open-delim) read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
-      {:error {:type :org.panchromatic.tiny-mokuhan/parse-variable-tag-error
-               :message err
+      {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
+               :cause err
                :occurred (-> (get-in state [:template-context])
                              (select-keys [:row :column]))}})))
 
@@ -191,8 +191,8 @@
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
-      {:error {:type :org.panchromatic.tiny-mokuhan/parse-unescaped-variable-tag-error
-               :message err
+      {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
+               :cause err
                :occurred (-> (get-in state [:template-context])
                              (select-keys [:row :column]))}})))
 
@@ -213,18 +213,18 @@
         (-> state
             (update-in [:ast] mzip/append&into-section)
             (update-in [:ast] mzip/assoc-open-section-tag open-section-tag-node)
-            (update-in [:template-context :context] conj ks)
+            (update-in [:template-context :contexts] conj ks)
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
-      {:error {:type :org.panchromatic.tiny-mokuhan/parse-open-section-tag-error
-               :message err
+      {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
+               :cause err
                :occurred (-> (get-in state [:template-context])
                              (select-keys [:row :column]))}})))
 
 (defn parse-close-section-tag [reader state]
   (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
-        [current-context & rest-contexts] (get-in state [:template-context :context])
+        [current-context & rest-contexts] (get-in state [:template-context :contexts])
         _ (read-delimiter reader open-delim)
         ensure-close-section? (= \/ (reader/read-char reader))
         {:keys [ks read-cnt err]} (read-keys reader close-delim)
@@ -235,19 +235,19 @@
         (-> state
             (update-in [:ast] mzip/assoc-close-section-tag close-section-tag-node)
             (update-in [:ast] mzip/out-section)
-            (update-in [:template-context :context] pop)
+            (update-in [:template-context :contexts] pop)
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
 
       (not= current-context ks)
-      {:error {:type :org.panchromatic.tiny-mokuhan/parse-close-section-tag-error
-               :detail :unclosed-section
+      {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
+               :cause :unclosed-section
                :occurred (-> (get-in state [:template-context])
-                             (select-keys [:row :column :context]))}}
+                             (select-keys [:row :column :contexts]))}}
 
       :else
-      {:error {:type :org.panchromatic.tiny-mokuhan/parse-close-section-tag-error
-               :message err
+      {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
+               :cause err
                :occurred (-> (get-in state [:template-context])
                              (select-keys [:row :column]))}})))
 
