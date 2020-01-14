@@ -161,11 +161,17 @@
                (next-read-keys-state state :read-char)
                (update result :read-cnt inc))))))
 
+(defn- read-delimiter [reader delim]
+  (->> (ustr/length delim)
+       (reader/read-chars reader)
+       (keep identity)
+       (apply str)))
+
 (defn parse-variable-tag [reader state]
   (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
-        _ (reader/skip reader (ustr/length open-delim))
+        _ (read-delimiter reader open-delim)
         {:keys [ks read-cnt err]} (read-keys reader close-delim)
-        _ (reader/skip reader (ustr/length close-delim))]
+        _ (read-delimiter reader close-delim)]
     (if-not err
       (let [variable-tag-node (ast/variable-tag ks (state->template-context state))]
         (-> state
@@ -180,10 +186,10 @@
 
 (defn parse-unescaped-variable-tag [reader state]
   (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
-        _ (reader/skip reader (ustr/length open-delim))
+        _ (read-delimiter reader open-delim)
         ensure-unescaped-variable? (= \& (reader/read-char reader))
         {:keys [ks read-cnt err]} (read-keys reader close-delim)
-        _ (reader/skip reader (ustr/length close-delim))]
+        _ (read-delimiter reader close-delim)]
     (if (and ensure-unescaped-variable? (nil? err))
       (let [unescaped-variable-tag-node (ast/unescaped-variable-tag ks (state->template-context state))]
         (-> state
@@ -195,12 +201,6 @@
                :cause err
                :occurred (-> (get-in state [:template-context])
                              (select-keys [:row :column]))}})))
-
-(defn- read-delimiter [reader delim]
-  (->> (ustr/length delim)
-       (reader/read-chars reader)
-       (keep identity)
-       (apply str)))
 
 (defn parse-open-section-tag [reader state]
   (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
