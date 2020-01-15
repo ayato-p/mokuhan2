@@ -1,12 +1,12 @@
-(ns org.panchromatic.tiny-mokuhan.parser.internal-test
+(ns org.panchromatic.mokuhan2.parser.internal-test
   (:require [clojure.string :as str]
             [clojure.test :as t]
             [clojure.zip :as zip]
-            [org.panchromatic.tiny-mokuhan.ast2 :as ast]
-            [org.panchromatic.tiny-mokuhan.parser.internal :as sut]
-            [org.panchromatic.tiny-mokuhan.reader :as reader]
-            [org.panchromatic.tiny-mokuhan.zip2 :as mzip]
-            [org.panchromatic.tiny-mokuhan.util.string :as ustr]))
+            [org.panchromatic.mokuhan2.ast2 :as ast]
+            [org.panchromatic.mokuhan2.parser.internal :as sut]
+            [org.panchromatic.mokuhan2.reader :as reader]
+            [org.panchromatic.mokuhan2.zip2 :as mzip]
+            [org.panchromatic.mokuhan2.util.string :as ustr]))
 
 (defn- test-reader
   ([s]
@@ -266,28 +266,28 @@
 
   (t/testing "Errors"
     (with-open [reader (test-reader "{{foo>>")]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                 :cause :unclosed-tag
                 :occurred {:row 1 :column 1 :contexts ()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    :error))))
 
     (with-open [reader (test-reader "{{foo" 2)]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                 :cause :unclosed-tag
                 :occurred {:row 1 :column 1 :contexts ()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    :error))))
 
     (with-open [reader (test-reader "{{fo o}}" 2)]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                 :cause :invalid-tag-name
                 :occurred {:row 1 :column 1 :contexts ()}}
                (-> (sut/parse-variable-tag reader initial-state)
                    :error))))
 
     (with-open [reader (test-reader "{{foo bar" 2)]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                 :cause :invalid-tag-name
                 :occurred {:row 1 :column 1 :contexts ()}}
                (-> (sut/parse-variable-tag reader initial-state)
@@ -325,14 +325,14 @@
 
   (t/testing "Errors"
     (with-open [reader (test-reader "{{&foo")]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                 :cause :unclosed-tag
                 :occurred {:row 1 :column 1 :contexts ()}}
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
                    :error))))
 
     (with-open [reader (test-reader "{{&fo o")]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                 :cause :invalid-tag-name
                 :occurred {:row 1 :column 1 :contexts ()}}
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
@@ -382,14 +382,14 @@
 
   (t/testing "Errors"
     (with-open [reader (test-reader "{{#foo")]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                 :cause :unclosed-tag
                 :occurred {:row 1 :column 1 :contexts ()}}
                (-> (sut/parse-open-section-tag reader initial-state)
                    :error))))
 
     (with-open [reader (test-reader "{{#fo o")]
-      (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                 :cause :invalid-tag-name
                 :occurred {:row 1 :column 1 :contexts ()}}
                (-> (sut/parse-open-section-tag reader initial-state)
@@ -441,7 +441,7 @@
 
   (t/testing "Errors"
     (with-open [reader (test-reader "{{/bar}}" 3)]
-      (t/is (= {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
+      (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
                         :cause :unclosed-section
                         :occurred {:row 1
                                    :column 9
@@ -510,14 +510,14 @@
   (t/testing "Errors"
     (with-open [r (test-reader "Hello, {{name" 3)]
       (let [{:keys [ast error]} (sut/parse r initial-state)]
-        (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+        (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                   :cause :unclosed-tag
                   :occurred {:row 1 :column 8 :contexts ()}}
                  error))))
 
     (with-open [r (test-reader "Hello, {{&name" 3)]
       (let [{:keys [ast error]} (sut/parse r initial-state)]
-        (t/is (= {:type :org.panchromatic.tiny-mokuhan/parse-error
+        (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                   :cause :unclosed-tag
                   :occurred {:row 1 :column 8 :contexts ()}}
                  error))))))

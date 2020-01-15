@@ -1,5 +1,5 @@
-(ns org.panchromatic.tiny-mokuhan.reader-test
-  (:require [org.panchromatic.tiny-mokuhan.reader :as sut]
+(ns org.panchromatic.mokuhan2.reader-test
+  (:require [org.panchromatic.mokuhan2.reader :as sut]
             [clojure.test :as t]))
 
 (defn- gen-rdr [s]

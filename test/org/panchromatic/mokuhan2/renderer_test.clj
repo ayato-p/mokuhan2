@@ -1,7 +1,7 @@
-(ns org.panchromatic.tiny-mokuhan.renderer-test
-  (:require [org.panchromatic.tiny-mokuhan.renderer :as sut]
+(ns org.panchromatic.mokuhan2.renderer-test
+  (:require [org.panchromatic.mokuhan2.renderer :as sut]
             [clojure.test :as t]
-            [org.panchromatic.tiny-mokuhan.ast :as ast]))
+            [org.panchromatic.mokuhan2.ast :as ast]))
 
 (t/deftest render-text-test
   (let [ast (ast/mustache

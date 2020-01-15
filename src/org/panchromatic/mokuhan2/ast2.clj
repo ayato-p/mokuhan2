@@ -1,4 +1,4 @@
-(ns org.panchromatic.tiny-mokuhan.ast2
+(ns org.panchromatic.mokuhan2.ast2
   (:refer-clojure :exclude [newline partial])
   (:require [clojure.string :as str]))
 

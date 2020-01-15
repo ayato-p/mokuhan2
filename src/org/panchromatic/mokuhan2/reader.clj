@@ -1,4 +1,4 @@
-(ns org.panchromatic.tiny-mokuhan.reader)
+(ns org.panchromatic.mokuhan2.reader)
 
 (defn pushback-reader
   ([^java.io.Reader in]

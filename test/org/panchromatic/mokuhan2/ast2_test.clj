@@ -1,5 +1,5 @@
-(ns org.panchromatic.tiny-mokuhan.ast2-test
-  (:require [org.panchromatic.tiny-mokuhan.ast2 :as ast]
+(ns org.panchromatic.mokuhan2.ast2-test
+  (:require [org.panchromatic.mokuhan2.ast2 :as ast]
             [clojure.test :as t]))
 
 (def tc

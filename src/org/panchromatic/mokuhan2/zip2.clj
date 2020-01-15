@@ -1,6 +1,6 @@
-(ns org.panchromatic.tiny-mokuhan.zip2
+(ns org.panchromatic.mokuhan2.zip2
   (:require [clojure.zip :as zip]
-            [org.panchromatic.tiny-mokuhan.ast2 :as ast]))
+            [org.panchromatic.mokuhan2.ast2 :as ast]))
 
 (def ^:private branch-node
   #{::ast/syntax-tree ::ast/section ::ast/inverted-section})

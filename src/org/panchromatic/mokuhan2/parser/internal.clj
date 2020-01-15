@@ -1,8 +1,8 @@
-(ns org.panchromatic.tiny-mokuhan.parser.internal
-  (:require [org.panchromatic.tiny-mokuhan.ast2 :as ast]
-            [org.panchromatic.tiny-mokuhan.reader :as reader]
-            [org.panchromatic.tiny-mokuhan.util.string :as ustr]
-            [org.panchromatic.tiny-mokuhan.zip2 :as mzip]))
+(ns org.panchromatic.mokuhan2.parser.internal
+  (:require [org.panchromatic.mokuhan2.ast2 :as ast]
+            [org.panchromatic.mokuhan2.reader :as reader]
+            [org.panchromatic.mokuhan2.util.string :as ustr]
+            [org.panchromatic.mokuhan2.zip2 :as mzip]))
 
 (defn make-initial-state
   [{:keys [delimiters] :as options}]
@@ -167,7 +167,7 @@
        (apply str)))
 
 (defn- parse-error [cause template-context]
-  {:error {:type :org.panchromatic.tiny-mokuhan/parse-error
+  {:error {:type :org.panchromatic.mokuhan2/parse-error
            :cause cause
            :occurred (select-keys template-context [:row :column :contexts])}})
 

@@ -1,4 +1,4 @@
-(ns org.panchromatic.tiny-mokuhan.ast
+(ns org.panchromatic.mokuhan2.ast
   (:refer-clojure :exclude [newline])
   (:require [clojure.zip :as zip]))
 

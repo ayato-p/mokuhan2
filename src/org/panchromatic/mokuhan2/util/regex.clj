@@ -1,4 +1,4 @@
-(ns org.panchromatic.tiny-mokuhan.util.regex
+(ns org.panchromatic.mokuhan2.util.regex
   (:refer-clojure :exclude [reset!]))
 
 (defn reset!

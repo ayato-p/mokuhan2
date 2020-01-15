@@ -1,9 +1,9 @@
-(ns org.panchromatic.tiny-mokuhan.parser2
+(ns org.panchromatic.mokuhan2.parser2
   (:require [clojure.java.io :as io]
-            [org.panchromatic.tiny-mokuhan.parser.internal :as internal]
-            [org.panchromatic.tiny-mokuhan.reader :as reader]
-            [org.panchromatic.tiny-mokuhan.util.misc :as umisc]
-            [org.panchromatic.tiny-mokuhan.zip2 :as mzip]))
+            [org.panchromatic.mokuhan2.parser.internal :as internal]
+            [org.panchromatic.mokuhan2.reader :as reader]
+            [org.panchromatic.mokuhan2.util.misc :as umisc]
+            [org.panchromatic.mokuhan2.zip2 :as mzip]))
 
 (def default-parse-options
   {:delimiters {:open "{{" :close "}}"}})

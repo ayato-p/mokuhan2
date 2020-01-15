@@ -1,4 +1,4 @@
-(ns org.panchromatic.tiny-mokuhan.util.misc)
+(ns org.panchromatic.mokuhan2.util.misc)
 
 (defn deep-merge [m1 m2]
   (cond

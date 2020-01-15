@@ -1,8 +1,8 @@
-(ns org.panchromatic.tiny-mokuhan.zip2-test
-  (:require [org.panchromatic.tiny-mokuhan.zip2 :as mzip]
+(ns org.panchromatic.mokuhan2.zip2-test
+  (:require [org.panchromatic.mokuhan2.zip2 :as mzip]
             [clojure.test :as t]
             [clojure.zip :as zip]
-            [org.panchromatic.tiny-mokuhan.ast2 :as ast]))
+            [org.panchromatic.mokuhan2.ast2 :as ast]))
 
 (def ^:private default-delimiters
   {:open "{{" :close "}}"})

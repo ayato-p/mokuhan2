@@ -1,4 +1,4 @@
-(ns org.panchromatic.tiny-mokuhan.helper)
+(ns org.panchromatic.mokuhan2.helper)
 
 (defmacro import-private-var
   ([qsym]

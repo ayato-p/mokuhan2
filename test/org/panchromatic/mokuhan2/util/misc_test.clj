@@ -1,5 +1,5 @@
-(ns org.panchromatic.tiny-mokuhan.util.misc-test
-  (:require [org.panchromatic.tiny-mokuhan.util.misc :as sut]
+(ns org.panchromatic.mokuhan2.util.misc-test
+  (:require [org.panchromatic.mokuhan2.util.misc :as sut]
             [clojure.test :as t]))
 
 (t/deftest deep-merge-test

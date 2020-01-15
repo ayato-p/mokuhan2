@@ -1,7 +1,7 @@
-(ns org.panchromatic.tiny-mokuhan.parser-test
+(ns org.panchromatic.mokuhan2.parser-test
   (:require [clojure.test :as t]
-            [org.panchromatic.tiny-mokuhan.ast :as ast]
-            [org.panchromatic.tiny-mokuhan.parser :as sut]))
+            [org.panchromatic.mokuhan2.ast :as ast]
+            [org.panchromatic.mokuhan2.parser :as sut]))
 
 (t/deftest text-parsing-test
   (t/testing "only text"

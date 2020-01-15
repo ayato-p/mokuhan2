@@ -1,9 +1,9 @@
-(ns org.panchromatic.tiny-mokuhan.parser
+(ns org.panchromatic.mokuhan2.parser
   (:require [clojure.zip :as zip]
-            [org.panchromatic.tiny-mokuhan.ast :as ast]
-            [org.panchromatic.tiny-mokuhan.util.misc :as umizc]
-            [org.panchromatic.tiny-mokuhan.util.regex :as uregex]
-            [org.panchromatic.tiny-mokuhan.zip :as mzip]))
+            [org.panchromatic.mokuhan2.ast :as ast]
+            [org.panchromatic.mokuhan2.util.misc :as umizc]
+            [org.panchromatic.mokuhan2.util.regex :as uregex]
+            [org.panchromatic.mokuhan2.zip :as mzip]))
 
 (def ^:private double-mustache
   {:open "{{"

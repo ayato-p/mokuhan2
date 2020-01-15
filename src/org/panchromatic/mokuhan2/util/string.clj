@@ -1,4 +1,4 @@
-(ns org.panchromatic.tiny-mokuhan.util.string
+(ns org.panchromatic.mokuhan2.util.string
   (:require [clojure.string :as str]))
 
 ;; StringBuilder
