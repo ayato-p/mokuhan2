@@ -1,6 +1,21 @@
-* Tiny Mokuhan
+* Mokuhan(木版)2
 
-Tiny Mokuhan is experimental implementation of Mustache in Clojure.
+Mokuhan2 is experimental implementation of {{mustache}} in Clojure.
+
+** Project Status
+
+Alpha.
+
+** Supported Clojure Environments
+
+- [X] Clojure
+- [ ] ClojureScript
+
+
+** Features
+
+- [ ] Respect runtime environmnets
+- [ ] Extensible parser and/or renderer
 
 ** License
 
