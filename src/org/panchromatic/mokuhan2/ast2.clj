@@ -20,12 +20,23 @@
            nodes)))
 
 (defn template-context
-  [{:keys [open close] :as delimiters} row-num col-num standalone?]
-  {:type ::template-context
-   :delimiters delimiters
-   :row row-num
-   :column col-num
-   :standalone? standalone?})
+  ([{:keys [delimiters row column contexts standalone?]}]
+   {:type ::template-context
+    :delimiters delimiters
+    :row (or row 1)
+    :column (or column 1)
+    :contexts (or contexts ())
+    :standalone? (or standalone? false)})
+
+  ([{:keys [open close] :as delimiters} row-num col-num standalone? contexts]
+   {:type ::template-context
+    :delimiters delimiters
+    :row row-num
+    :column col-num
+    :contexts contexts
+    :standalone? standalone?}))
+
+
 
 (defn standalone? [node]
   (get-in node [:tc :standalone?]))

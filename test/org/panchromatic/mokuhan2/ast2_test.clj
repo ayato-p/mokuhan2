@@ -6,7 +6,8 @@
   (ast/template-context {:open "{{":close "}}"}
                         1
                         1
-                        true))
+                        true
+                        ()))
 
 (t/deftest variable-tag->mustache-str-test
   (t/is (= "{{foo}}"

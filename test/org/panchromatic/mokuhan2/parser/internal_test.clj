@@ -49,7 +49,8 @@
                        [(ast/text expected (ast/template-context default-delimiters
                                                                  1
                                                                  1
-                                                                 true))])
+                                                                 true
+                                                                 ()))])
                  :template-context {:delimiters default-delimiters
                                     :row 1
                                     :column 6
@@ -72,7 +73,8 @@
                     [(ast/text "Hello{x{x" (ast/template-context default-delimiters
                                                                  1
                                                                  1
-                                                                 true))])
+                                                                 true
+                                                                 ()))])
               :template-context {:delimiters default-delimiters
                                  :row 1
                                  :column 10
@@ -87,7 +89,8 @@
                     [(ast/text "{x{x" (ast/template-context default-delimiters
                                                             1
                                                             1
-                                                            true))])
+                                                            true
+                                                            ()))])
               :template-context {:delimiters default-delimiters
                                  :row 1
                                  :column 5
@@ -104,7 +107,8 @@
                        [(ast/whitespace " " (ast/template-context default-delimiters
                                                                   1
                                                                   1
-                                                                  true))])
+                                                                  true
+                                                                  ()))])
                  :template-context {:delimiters default-delimiters
                                     :row 1
                                     :column 2
@@ -125,7 +129,8 @@
                     [(ast/whitespace "  " (ast/template-context default-delimiters
                                                                 1
                                                                 1
-                                                                true))])
+                                                                true
+                                                                ()))])
               :template-context {:delimiters default-delimiters
                                  :row 1
                                  :column 3
@@ -141,7 +146,8 @@
                     [(ast/newline "\r\n" (ast/template-context default-delimiters
                                                                1
                                                                1
-                                                               true))])
+                                                               true
+                                                               ()))])
               :template-context {:delimiters default-delimiters
                                  :row 2
                                  :column 1
@@ -156,7 +162,8 @@
                     [(ast/newline "\n" (ast/template-context default-delimiters
                                                              1
                                                              1
-                                                             true))])
+                                                             true
+                                                             ()))])
               :template-context {:delimiters default-delimiters
                                  :row 2
                                  :column 1
@@ -173,7 +180,8 @@
                       [(ast/variable-tag ["foo"] (ast/template-context default-delimiters
                                                                        1
                                                                        1
-                                                                       true))])
+                                                                       true
+                                                                       ()))])
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 8
@@ -189,7 +197,8 @@
                       [(ast/variable-tag ["foo"] (ast/template-context default-delimiters
                                                                        1
                                                                        1
-                                                                       true))])
+                                                                       true
+                                                                       ()))])
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 10
@@ -205,7 +214,8 @@
                       [(ast/variable-tag ["foo" "bar"] (ast/template-context default-delimiters
                                                                              1
                                                                              1
-                                                                             true))])
+                                                                             true
+                                                                             ()))])
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 12
@@ -221,7 +231,8 @@
                       [(ast/variable-tag ["foo{{"] (ast/template-context default-delimiters
                                                                          1
                                                                          1
-                                                                         true))])
+                                                                         true
+                                                                         ()))])
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 10
@@ -237,7 +248,8 @@
                       [(ast/variable-tag ["fo}o"] (ast/template-context default-delimiters
                                                                         1
                                                                         1
-                                                                        true))])
+                                                                        true
+                                                                        ()))])
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 9
@@ -253,7 +265,8 @@
                       [(ast/variable-tag ["foo"] (ast/template-context default-delimiters
                                                                        1
                                                                        1
-                                                                       true))])
+                                                                       true
+                                                                       ()))])
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 8
@@ -300,7 +313,8 @@
                       [(ast/unescaped-variable-tag ["foo"] (ast/template-context default-delimiters
                                                                                  1
                                                                                  1
-                                                                                 true))])
+                                                                                 true
+                                                                                 ()))])
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 9
@@ -314,7 +328,8 @@
                       [(ast/unescaped-variable-tag ["foo"] (ast/template-context default-delimiters
                                                                                  1
                                                                                  1
-                                                                                 true))])
+                                                                                 true
+                                                                                 ()))])
                 :template-context {:delimiters default-delimiters
                                    :row 1
                                    :column 11
@@ -347,7 +362,8 @@
                           (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
                                                                               1
                                                                               1
-                                                                              true)))])
+                                                                              true
+                                                                              ())))])
                   :template-context {:delimiters default-delimiters
                                      :row 1
                                      :column 9
@@ -367,7 +383,8 @@
                           (ast/open-section-tag ["foo" "bar"] (ast/template-context default-delimiters
                                                                                     1
                                                                                     1
-                                                                                    true)))])
+                                                                                    true
+                                                                                    ())))])
                   :template-context {:delimiters default-delimiters
                                      :row 1
                                      :column 13
@@ -400,7 +417,8 @@
         (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
                                                             1
                                                             1
-                                                            false))]
+                                                            false
+                                                            ()))]
     (-> (mzip/ast-zip)
         (mzip/append&into-section)
         (mzip/assoc-open-section-tag open-section-tag-node))))
@@ -426,11 +444,13 @@
                           (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
                                                                               1
                                                                               1
-                                                                              false))
+                                                                              false
+                                                                              ()))
                           (ast/close-section-tag ["foo"] (ast/template-context default-delimiters
                                                                                1
                                                                                9
-                                                                               false))
+                                                                               false
+                                                                               '()))
                           [])])
                   :template-context {:delimiters default-delimiters
                                      :row 1
@@ -446,6 +466,22 @@
                         :occurred {:row 1
                                    :column 9
                                    :contexts '(["foo"])}}}
+               (sut/parse-close-section-tag reader opened-section-state))))
+
+    (with-open [reader (test-reader "{{/foo")]
+      (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
+                        :cause :unclosed-tag
+                        :occurred {:row 1
+                                   :column 9
+                                   :contexts '(["foo"])}}}
+               (sut/parse-close-section-tag reader opened-section-state))))
+
+    (with-open [reader (test-reader "{{/fo o}}")]
+      (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
+                        :cause :invalid-tag-name
+                        :occurred {:row 1
+                                   :column 9
+                                   :contexts '(["foo"])}}}
                (sut/parse-close-section-tag reader opened-section-state))))))
 
 (t/deftest parse-test
@@ -456,15 +492,18 @@
                   [(ast/text "Hello," (ast/template-context default-delimiters
                                                             1
                                                             1
-                                                            true))
+                                                            true
+                                                            ()))
                    (ast/whitespace " " (ast/template-context default-delimiters
                                                              1
                                                              7
-                                                             false))
+                                                             false
+                                                             ()))
                    (ast/text "world" (ast/template-context default-delimiters
                                                            1
                                                            8
-                                                           false))])
+                                                           false
+                                                           ()))])
                  ast))
 
         (t/is (nil? error))))
@@ -475,15 +514,18 @@
                   [(ast/text "{Hello}," (ast/template-context default-delimiters
                                                               1
                                                               1
-                                                              true))
+                                                              true
+                                                              ()))
                    (ast/whitespace " " (ast/template-context default-delimiters
                                                              1
                                                              9
-                                                             false))
+                                                             false
+                                                             ()))
                    (ast/variable-tag ["name"] (ast/template-context default-delimiters
                                                                     1
                                                                     10
-                                                                    false))])
+                                                                    false
+                                                                    ()))])
                  ast))
 
         (t/is (nil? error))))
@@ -494,15 +536,18 @@
                   [(ast/text "Hello," (ast/template-context default-delimiters
                                                             1
                                                             1
-                                                            true))
+                                                            true
+                                                            ()))
                    (ast/whitespace " " (ast/template-context default-delimiters
                                                              1
                                                              7
-                                                             false))
+                                                             false
+                                                             ()))
                    (ast/variable-tag ["name"] (ast/template-context default-delimiters
                                                                     1
                                                                     8
-                                                                    false))])
+                                                                    false
+                                                                    ()))])
                  ast))
 
         (t/is (nil? error)))))
@@ -528,7 +573,8 @@
               [(ast/variable-tag ["x"] (ast/template-context default-delimiters
                                                              1
                                                              1
-                                                             true))])
+                                                             true
+                                                             ()))])
              (-> (sut/parse reader initial-state)
                  :ast))))
 
@@ -537,15 +583,18 @@
               [(ast/whitespace " " (ast/template-context default-delimiters
                                                          1
                                                          1
-                                                         false))
+                                                         false
+                                                         ()))
                (ast/variable-tag ["x"] (ast/template-context default-delimiters
                                                              1
                                                              2
-                                                             true))
+                                                             true
+                                                             ()))
                (ast/whitespace " " (ast/template-context default-delimiters
                                                          1
                                                          7
-                                                         false))])
+                                                         false
+                                                         ()))])
              (-> (sut/parse reader initial-state)
                  :ast))))
 
@@ -554,15 +603,18 @@
               [(ast/variable-tag ["x"] (ast/template-context default-delimiters
                                                              1
                                                              1
-                                                             true))
+                                                             true
+                                                             ()))
                (ast/newline "\n" (ast/template-context default-delimiters
                                                        1
                                                        6
-                                                       false))
+                                                       false
+                                                       ()))
                (ast/variable-tag ["y"] (ast/template-context default-delimiters
                                                              2
                                                              1
-                                                             true))])
+                                                             true
+                                                             ()))])
              (-> (sut/parse reader initial-state)
                  :ast))))
 
@@ -571,15 +623,18 @@
               [(ast/text "x" (ast/template-context default-delimiters
                                                    1
                                                    1
-                                                   false))
+                                                   false
+                                                   ()))
                (ast/variable-tag ["x"] (ast/template-context default-delimiters
                                                              1
                                                              2
-                                                             false))
+                                                             false
+                                                             ()))
                (ast/whitespace " " (ast/template-context default-delimiters
                                                          1
                                                          7
-                                                         false))])
+                                                         false
+                                                         ()))])
              (-> (sut/parse reader initial-state)
                  :ast))))
 
@@ -588,10 +643,28 @@
               [(ast/variable-tag ["foo"] (ast/template-context default-delimiters
                                                                1
                                                                1
-                                                               false))
+                                                               false
+                                                               ()))
                (ast/variable-tag ["bar"] (ast/template-context default-delimiters
                                                                1
                                                                8
-                                                               false))])
+                                                               false
+                                                               ()))])
+             (-> (sut/parse reader initial-state)
+                 :ast))))
+
+  (with-open [reader (test-reader "{{#foo}}{{/foo}}" 3)]
+    (t/is (= (ast/syntax-tree
+              [(ast/section
+                (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
+                                                                    1
+                                                                    1
+                                                                    false
+                                                                    ()))
+                (ast/close-section-tag ["foo"] (ast/template-context default-delimiters
+                                                                     1
+                                                                     9
+                                                                     false
+                                                                     '())))])
              (-> (sut/parse reader initial-state)
                  :ast)))))
