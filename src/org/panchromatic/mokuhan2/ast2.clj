@@ -19,30 +19,11 @@
            (StringBuilder. (count nodes))
            nodes)))
 
-(defn template-context
-  ([{:keys [delimiters row column contexts standalone?]}]
-   {:type ::template-context
-    :delimiters delimiters
-    :row (or row 1)
-    :column (or column 1)
-    :contexts (or contexts ())
-    :standalone? (or standalone? false)})
-
-  ([{:keys [open close] :as delimiters} row-num col-num standalone? contexts]
-   {:type ::template-context
-    :delimiters delimiters
-    :row row-num
-    :column col-num
-    :contexts contexts
-    :standalone? standalone?}))
-
-
-
 (defn standalone? [node]
   (get-in node [:tc :standalone?]))
 
-(defn update-standalone [node new-val]
-  (assoc-in node [:tc :standalone?] new-val))
+(defn assoc-standalone [node standalone?]
+  (assoc-in node [:tc :standalone?] standalone?))
 
 (defn variable-tag [keys template-context]
   {:type ::variable-tag

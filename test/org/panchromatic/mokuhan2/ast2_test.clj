@@ -3,11 +3,10 @@
             [clojure.test :as t]))
 
 (def tc
-  (ast/template-context {:open "{{":close "}}"}
-                        1
-                        1
-                        true
-                        ()))
+  {:delimiters {:open "{{" :close "}}"}
+   :row        1
+   :column     1
+   :contexts   []})
 
 (t/deftest variable-tag->mustache-str-test
   (t/is (= "{{foo}}"
