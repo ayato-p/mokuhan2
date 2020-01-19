@@ -36,6 +36,12 @@
     (-> (zip/insert-right loc primitive)
         zip/right)))
 
+(def ^:private tag-node
+  #{::ast/variable-tag ::ast/unescaped-variable-tag})
+
+(defn- tag-node? [node]
+  (contains? tag-node (:type node)))
+
 (defn look-behind-for-not-standalone [loc]
   (let [current (zip/node loc)]
     (loop [loc loc]
@@ -44,8 +50,9 @@
                 (= ::ast/newline (:type left-node))
                 (false? (ast/standalone? left-node)))
           (zip/rightmost loc)
-          (recur (-> (zip/left loc)
-                     (zip/edit ast/assoc-standalone false))))))))
+          (recur (cond-> (zip/left loc)
+                   (tag-node? left-node)
+                   (zip/edit ast/assoc-standalone false))))))))
 
 (defn complete [loc]
   (zip/root loc))

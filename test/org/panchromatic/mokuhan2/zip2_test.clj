@@ -79,4 +79,19 @@
                    (mzip/append-node tag-node1)
                    (mzip/append-node tag-node2)
                    mzip/look-behind-for-not-standalone
+                   mzip/complete)))))
+
+  (t/testing "ignore whitespace"
+    (let [whitespace-node (ast/whitespace "  " dummy-tc)
+          tag-node1 (ast/variable-tag ["x"] (assoc dummy-tc :standalone? true))
+          tag-node2 (ast/variable-tag ["y"] (assoc dummy-tc :standalone? false))]
+      (t/is (= (ast/syntax-tree
+                [(ast/whitespace "  " dummy-tc)
+                 (ast/variable-tag ["x"] (assoc dummy-tc :standalone? false))
+                 (ast/variable-tag ["y"] (assoc dummy-tc :standalone? false))])
+               (-> (mzip/ast-zip)
+                   (mzip/append-node whitespace-node)
+                   (mzip/append-node tag-node1)
+                   (mzip/append-node tag-node2)
+                   mzip/look-behind-for-not-standalone
                    mzip/complete))))))
