@@ -2,6 +2,8 @@
   (:require [clojure.zip :as zip]
             [org.panchromatic.mokuhan2.ast2 :as ast]))
 
+;; Zipper
+
 (def ^:private branch-node
   #{::ast/syntax-tree ::ast/section ::ast/inverted-section})
 
@@ -23,35 +25,27 @@
                make-node
                root)))
 
-(defn append-primitive [loc primitive]
-  (zip/append-child loc primitive))
+;; manipulator
 
-(defn append-tag [loc tag]
-  (loop [loc (-> loc
-                 (zip/append-child tag)
-                 zip/down
-                 zip/rightmost)]
-    (let [left-node (some-> loc zip/left zip/node)]
-      (if (or (nil? left-node)
-              (= ::ast/newline (:type left-node))
-              (false? (ast/standalone? left-node)))
-        (zip/up loc)
-        (recur (zip/edit (zip/left loc) ast/update-standalone false))))))
+(defn append-node
+  "Insert a primitive node then moved to there."
+  [loc primitive]
+  (if (zip/branch? loc)
+    (-> (zip/insert-child loc primitive)
+        zip/down)
+    (-> (zip/insert-right loc primitive)
+        zip/right)))
 
-(defn append&into-section [loc]
-  (-> loc
-      (zip/append-child (ast/section))
-      zip/down
-      zip/rightmost))
-
-(defn out-section [loc]
-  (zip/up loc))
-
-(defn assoc-open-section-tag [loc tag]
-  (zip/edit loc ast/assoc-open-section-tag tag))
-
-(defn assoc-close-section-tag [loc tag]
-  (zip/edit loc ast/assoc-close-section-tag tag))
+(defn look-behind-for-not-standalone [loc]
+  (let [current (zip/node loc)]
+    (loop [loc loc]
+      (let [left-node (some-> loc zip/left zip/node)]
+        (if (or (nil? left-node)
+                (= ::ast/newline (:type left-node))
+                (false? (ast/standalone? left-node)))
+          (zip/rightmost loc)
+          (recur (-> (zip/left loc)
+                     (zip/edit ast/assoc-standalone false))))))))
 
 (defn complete [loc]
   (zip/root loc))

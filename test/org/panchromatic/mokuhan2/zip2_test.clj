@@ -1,20 +1,23 @@
 (ns org.panchromatic.mokuhan2.zip2-test
-  (:require [org.panchromatic.mokuhan2.zip2 :as mzip]
-            [clojure.test :as t]
+  (:require [clojure.test :as t]
             [clojure.zip :as zip]
-            [org.panchromatic.mokuhan2.ast2 :as ast]))
+            [org.panchromatic.mokuhan2.ast2 :as ast]
+            [org.panchromatic.mokuhan2.zip2 :as mzip]))
 
 (def ^:private default-delimiters
   {:open "{{" :close "}}"})
 
 (def ^:private dummy-tc
-  (ast/template-context {:open "{{" :close "}}"} 0 0 true ()))
+  {:delimiters default-delimiters
+   :row 1
+   :column 1
+   :contexts []})
 
 (t/deftest zip-test
   (t/is (= (ast/syntax-tree
             [(ast/text "Hello" dummy-tc)])
            (-> (mzip/ast-zip)
-               (mzip/append-primitive (ast/text "Hello" dummy-tc))
+               (mzip/append-node (ast/text "Hello" dummy-tc))
                mzip/complete)))
 
   (t/is (= (ast/syntax-tree
@@ -48,90 +51,32 @@
                (zip/edit assoc :c-tag (ast/close-section-tag ["bar"] dummy-tc))
                zip/root))))
 
-(t/deftest append-tag-test
-  (t/is (= (ast/syntax-tree
-            [(ast/variable-tag ["x"] (ast/template-context default-delimiters 1 1 true ()))])
+(t/deftest append-node-test
+  (let [text-node1 (ast/text "Hello," dummy-tc)
+        ws-node (ast/whitespace " " dummy-tc)
+        text-node2 (ast/text "world." dummy-tc)
+        loc1 (-> (mzip/ast-zip)
+                 (mzip/append-node text-node1))
+        loc2 (mzip/append-node loc1 ws-node)
+        loc3 (mzip/append-node loc2 text-node2)]
 
-           (let [v1 (ast/variable-tag ["x"] (ast/template-context default-delimiters
-                                                                  1
-                                                                  1
-                                                                  true
-                                                                  ()))]
-             (-> (mzip/ast-zip)
-                 (mzip/append-tag v1)
-                 mzip/complete))))
+    (t/is (= text-node1 (zip/node loc1)))
+    (t/is (= ws-node (zip/node loc2)))
+    (t/is (= text-node2 (zip/node loc3)))
 
-  (t/is (= (ast/syntax-tree
-            [(ast/variable-tag ["x"] (ast/template-context default-delimiters 1 1 false ()))
-             (ast/variable-tag ["y"] (ast/template-context default-delimiters 1 6 false ()))])
-           (let [v1 (ast/variable-tag ["x"] (ast/template-context default-delimiters
-                                                                  1
-                                                                  1
-                                                                  true
-                                                                  ()))
-                 v2 (ast/variable-tag ["y"] (ast/template-context default-delimiters
-                                                                  1
-                                                                  6
-                                                                  false
-                                                                  ()))]
-             (-> (mzip/ast-zip)
-                 (mzip/append-tag v1)
-                 (mzip/append-tag v2)
-                 mzip/complete))))
-
-  (t/is (= (ast/syntax-tree
-            [(ast/variable-tag ["x"] (ast/template-context default-delimiters 1 1 true ()))
-             (ast/newline "\n" (ast/template-context default-delimiters 1 6 false ()))
-             (ast/variable-tag ["y"] (ast/template-context default-delimiters 2 1 true ()))])
-           (let [v1 (ast/variable-tag ["x"] (ast/template-context default-delimiters
-                                                                  1
-                                                                  1
-                                                                  true
-                                                                  ()))
-                 nl (ast/newline "\n" (ast/template-context default-delimiters 1 6 false ()))
-                 v2 (ast/variable-tag ["y"] (ast/template-context default-delimiters
-                                                                  2
-                                                                  1
-                                                                  true
-                                                                  ()))]
-             (-> (mzip/ast-zip)
-                 (mzip/append-tag v1)
-                 (mzip/append-primitive nl)
-                 (mzip/append-tag v2)
-                 mzip/complete)))))
-
-(t/deftest append&into-section-test
-  (let [loc (-> (mzip/ast-zip)
-                mzip/append&into-section)]
     (t/is (= (ast/syntax-tree
-              [(ast/section)])
-             (mzip/complete loc)))
+              [text-node1 ws-node text-node2])
+             (mzip/complete loc3)))))
 
-    (t/is (= ::ast/section
-             (:type (zip/node loc))))))
-
-(t/deftest out-section-test
-  (t/is (= ::ast/syntax-tree
-           (-> (mzip/ast-zip)
-               mzip/append&into-section
-               mzip/out-section
-               zip/node
-               :type))))
-
-(t/deftest assoc-open-section-tag-test
-  (t/is (= (ast/syntax-tree
-            [(ast/section
-              (ast/open-section-tag ["x"] (ast/template-context default-delimiters
-                                                                1
-                                                                1
-                                                                true
-                                                                ())))])
-           (let [open-tag (ast/open-section-tag ["x"] (ast/template-context default-delimiters
-                                                                            1
-                                                                            1
-                                                                            true
-                                                                            ()))]
-             (-> (mzip/ast-zip)
-                 mzip/append&into-section
-                 (mzip/assoc-open-section-tag open-tag)
-                 mzip/complete)))))
+(t/deftest look-behind-for-not-standalone-test
+  (t/testing "standard pattern"
+    (let [tag-node1 (ast/variable-tag ["x"] (assoc dummy-tc :standalone? true))
+          tag-node2 (ast/variable-tag ["y"] (assoc dummy-tc :standalone? false))]
+      (t/is (= (ast/syntax-tree
+                [(ast/variable-tag ["x"] (assoc dummy-tc :standalone? false))
+                 (ast/variable-tag ["y"] (assoc dummy-tc :standalone? false))])
+               (-> (mzip/ast-zip)
+                   (mzip/append-node tag-node1)
+                   (mzip/append-node tag-node2)
+                   mzip/look-behind-for-not-standalone
+                   mzip/complete))))))
