@@ -1,6 +1,6 @@
 (ns org.panchromatic.mokuhan2.renderer
   (:require [clojure.string :as str])
-  (:import [org.panchromatic.tiny_mokuhan.ast Mustache NewLine Text Variable]))
+  (:import [org.panchromatic.mokuhan2.ast Mustache NewLine Text Variable]))
 
 (defprotocol Renderer
   (-render [renderable data]))

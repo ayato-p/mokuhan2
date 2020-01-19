@@ -1,7 +1,7 @@
 (ns org.panchromatic.mokuhan2.zip
   (:require [clojure.zip :as zip]
             [org.panchromatic.mokuhan2.ast :as ast])
-  (:import org.panchromatic.tiny_mokuhan.ast.Mustache))
+  (:import org.panchromatic.mokuhan2.ast.Mustache))
 
 (defprotocol ASTZipper
   (branch? [this])
