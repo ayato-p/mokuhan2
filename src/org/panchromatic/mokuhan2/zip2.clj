@@ -36,11 +36,8 @@
     (-> (zip/insert-right loc primitive)
         zip/right)))
 
-(def ^:private tag-node
-  #{::ast/variable-tag ::ast/unescaped-variable-tag})
-
 (defn- tag-node? [node]
-  (contains? tag-node (:type node)))
+  (contains? ast/tags (:type node)))
 
 (defn look-behind-for-not-standalone [loc]
   (let [current (zip/node loc)]

@@ -2,6 +2,12 @@
   (:refer-clojure :exclude [newline partial])
   (:require [clojure.string :as str]))
 
+(def tags
+  #{::variable-tag ::unescaped-variable-tag
+    ::open-section-tag ::close-section-tag
+    ::open-inverted-section-tag ::close-inverted-section-tag
+    ::set-delimiter ::partial})
+
 (declare node->mustache-str)
 
 (defn syntax-tree
@@ -190,6 +196,7 @@
   [{:keys [type] :as node}]
   (let [f (case type
             ::variable-tag variable-tag->mustache-str
+            ::unescaped-variable-tag unescaped-variable-tag->mustache-str
             ::section section->mustache-str
             ::inverted-section inverted-section->mustache-str
             ::partial partial->mustache-str
