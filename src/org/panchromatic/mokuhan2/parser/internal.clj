@@ -7,59 +7,68 @@
 (defn make-initial-state
   [{:keys [delimiters] :as options}]
   {:ast (mzip/ast-zip)
-   :template-context (ast/template-context {:delimiters delimiters})})
+   :template-context {:delimiters {}
+                      :row 1
+                      :column 1
+                      :contexts []
+                      :line-nodes []}})
 
 (defn lookahead-and-matched? [reader s]
   (let [read (reader/read-chars reader (ustr/length s))
         _ (reader/unread-chars reader read)]
     (= s (apply str read))))
 
+(defn- ->min-tc [template-context]
+  (select-keys template-context [:delimiters :row :column :contexts]))
+
 (defn- read-text [reader open-delim]
   (loop [sb (ustr/string-builder)
+         read-cnt 0
          text? true]
     (if-let [c (and text? (reader/read-char reader))]
       (cond
         (contains? #{\space \tab \return \newline} c)
         (do
           (reader/unread-char reader c)
-          (recur sb false))
+          (recur sb read-cnt false))
 
         (= (ustr/char-at open-delim 0) c)
         (if (lookahead-and-matched? reader (subs open-delim 1))
           (do
             (reader/unread-char reader c)
-            (recur sb false))
-          (recur (ustr/append sb c) text?))
+            (recur sb read-cnt false))
+          (recur (ustr/append sb c) (inc read-cnt) text?))
 
         :else
-        (recur (ustr/append sb c) text?))
-      (str sb))))
+        (recur (ustr/append sb c) (inc read-cnt) text?))
+      {:text (str sb) :read-cnt read-cnt})))
 
 (defn parse-text [reader {:keys [template-context] :as state}]
-  (let [text (read-text reader (get-in template-context [:delimiters :open]))
-        text-node (ast/text text (ast/template-context template-context))]
+  (let [{:keys [text read-cnt]} (read-text reader (get-in template-context [:delimiters :open]))
+        text-node (ast/text text (->min-tc template-context))]
     (-> state
-        (update-in [:ast] mzip/append-primitive text-node)
-        (update-in [:template-context :column] + (ustr/length text))
-        (assoc-in [:template-context :standalone?] false))))
+        (update-in [:ast] mzip/append-node text-node)
+        (update-in [:template-context :column] + read-cnt)
+        (update-in [:template-context :line-nodes] conj (:type text-node)))))
 
 (defn- read-whitespace [reader]
   (loop [sb (ustr/string-builder)
-         whitespace? true]
-    (let [c (and whitespace? (reader/read-char reader))]
+         read-cnt 0]
+    (let [c (reader/read-char reader)]
       (case c
         (\space \tab \　)
-        (recur (.append sb c) whitespace?)
+        (recur (.append sb c) (inc read-cnt))
         (do
           (when c (reader/unread-char reader c))
-          (str sb))))))
+          {:whitespaces (str sb) :read-cnt read-cnt})))))
 
 (defn parse-whitespace [reader {:keys [template-context] :as state}]
-  (let [whitespaces (read-whitespace reader)
-        ws-node (ast/whitespace whitespaces (ast/template-context template-context))]
+  (let [{:keys [whitespaces read-cnt]} (read-whitespace reader)
+        ws-node (ast/whitespace whitespaces (->min-tc template-context))]
     (-> state
-        (update-in [:ast] mzip/append-primitive ws-node)
-        (update-in [:template-context :column] + (ustr/length whitespaces)))))
+        (update-in [:ast] mzip/append-node ws-node)
+        (update-in [:template-context :column] + read-cnt)
+        (update-in [:template-context :line-nodes] conj (:type ws-node)))))
 
 (defn- read-newline [reader]
   (loop [^StringBuilder sb (ustr/string-builder)
@@ -75,12 +84,12 @@
 
 (defn parse-newline [reader {:keys [template-context] :as state}]
   (let [newln (read-newline reader)
-        newln-node (ast/newline newln (ast/template-context template-context))]
+        newln-node (ast/newline newln (->min-tc template-context))]
     (-> state
-        (update-in [:ast] mzip/append-primitive newln-node)
+        (update-in [:ast] mzip/append-node newln-node)
         (assoc-in [:template-context :column] 1)
         (update-in [:template-context :row] inc)
-        (assoc-in [:template-context :standalone?] true))))
+        (assoc-in [:template-context :line-nodes] []))))
 
 (let [state {:begin {:read-ws :before-read-keys
                      :read-char :read-keys}
@@ -152,56 +161,91 @@
                (update result :read-cnt inc))))))
 
 (defn- read-delimiter [reader delim]
-  (->> (ustr/length delim)
-       (reader/read-chars reader)
-       (keep identity)
-       (apply str)))
+  (let [delim (->> (ustr/length delim)
+                   (reader/read-chars reader)
+                   (keep identity)
+                   (apply str))]
+    {:read-cnt (.length delim)
+     :delim delim}))
 
 (defn- parse-error [cause template-context]
   {:error {:type :org.panchromatic.mokuhan2/parse-error
            :cause cause
            :occurred (select-keys template-context [:row :column :contexts])}})
 
+(defn- tag-contains? [node-types]
+  (reduce (fn [_ t]
+            (if (contains? ast/tags t)
+              (reduced true)
+              false))
+          false
+          node-types))
+
+(defn- standalone? [node-types]
+  (reduce (fn [_ t]
+            (if (= ::ast/whitespace t)
+              true
+              (reduced false)))
+          true
+          node-types))
+
 (defn parse-variable-tag [reader {:keys [template-context] :as state}]
-  (let [{open-delim :open close-delim :close} (:delimiters template-context)
-        _ (read-delimiter reader open-delim)
-        {:keys [ks read-cnt err]} (read-keys reader close-delim)
-        _ (read-delimiter reader close-delim)]
+  (let [{{open-delim :open close-delim :close} :delimiters
+         :keys [line-nodes]} template-context
+        o (read-delimiter reader open-delim)
+        {:as k :keys [ks read-cnt err]} (read-keys reader close-delim)
+        c (read-delimiter reader close-delim)]
     (if-not err
-      (let [variable-tag-node (ast/variable-tag ks (ast/template-context template-context))]
+      (let [standalone (standalone? line-nodes)
+            tc (-> (->min-tc template-context)
+                   (assoc :standalone? standalone))
+            variable-tag-node (ast/variable-tag ks tc)]
         (-> state
-            (update-in [:ast] mzip/append-tag variable-tag-node)
-            (update-in [:template-context :column] + (ustr/length open-delim) read-cnt (ustr/length close-delim))
-            (assoc-in [:template-context :standalone?] false)))
+            (update-in [:ast] mzip/append-node variable-tag-node)
+            (cond-> (and (not standalone) (tag-contains? line-nodes))
+              (update-in [:ast] mzip/look-behind-for-not-standalone))
+            (update-in [:template-context :column] + (apply + (map :read-cnt [o k c])))
+            (update-in [:template-context :line-nodes] conj (:type variable-tag-node))))
 
       (parse-error err template-context))))
 
 (defn parse-unescaped-variable-tag [reader {:keys [template-context] :as state}]
-  (let [{open-delim :open close-delim :close} (:delimiters template-context)
-        _ (read-delimiter reader open-delim)
+  (let [{{open-delim :open close-delim :close} :delimiters
+         :keys [line-nodes]} template-context
+        o (read-delimiter reader open-delim)
         ensure-unescaped-variable? (= \& (reader/read-char reader))
-        {:keys [ks read-cnt err]} (read-keys reader close-delim)
-        _ (read-delimiter reader close-delim)]
+        {:as k :keys [ks read-cnt err]} (read-keys reader close-delim)
+        c (read-delimiter reader close-delim)]
     (if (and ensure-unescaped-variable? (nil? err))
-      (let [unescaped-variable-tag-node (ast/unescaped-variable-tag ks (ast/template-context template-context))]
+      (let [standalone (standalone? line-nodes)
+            tc (-> (->min-tc template-context)
+                   (assoc :standalone? standalone))
+            unescaped-variable-tag-node (ast/unescaped-variable-tag ks tc)]
         (-> state
-            (update-in [:ast] mzip/append-tag unescaped-variable-tag-node)
-            (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
-            (assoc-in [:template-context :standalone?] false)))
+            (update-in [:ast] mzip/append-node unescaped-variable-tag-node)
+            (cond-> (and (not standalone) (tag-contains? line-nodes))
+              (update-in [:ast] mzip/look-behind-for-not-standalone))
+            (update-in [:template-context :column] + (apply + 1 (map :read-cnt [o k c])))
+            (update-in [:template-context :line-nodes] conj (:type unescaped-variable-tag-node))))
 
       (parse-error err template-context))))
 
 (defn parse-open-section-tag [reader {:keys [template-context] :as state}]
-  (let [{open-delim :open close-delim :close} (:delimiters template-context)
+  (let [{{open-delim :open close-delim :close} :delimiters
+         :keys [line-nodes]} template-context
         _ (read-delimiter reader open-delim)
         ensure-open-section? (= \# (reader/read-char reader))
         {:keys [ks read-cnt err]} (read-keys reader close-delim)
         _ (read-delimiter reader close-delim)]
     (if (and ensure-open-section? (nil? err))
-      (let [open-section-tag-node (ast/open-section-tag ks (ast/template-context template-context))]
+      (let [standalone (standalone? line-nodes)
+            tc (-> (->min-tc template-context)
+                   (assoc :standalone? standalone))
+            open-section-tag-node (ast/open-section-tag ks tc)]
         (-> state
-            (update-in [:ast] mzip/append&into-section)
-            (update-in [:ast] mzip/assoc-open-section-tag open-section-tag-node)
+            (update-in [:ast] mzip/append-node open-section-tag-node)
+            (cond-> (and (not standalone) (tag-contains? line-nodes))
+              (update-in [:ast] mzip/look-behind-for-not-standalone))
             (update-in [:template-context :contexts] conj ks)
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
@@ -209,18 +253,23 @@
       (parse-error err template-context))))
 
 (defn parse-close-section-tag [reader {:keys [template-context] :as state}]
-  (let [{open-delim :open close-delim :close} (get-in state [:template-context :delimiters])
-        [current-context & rest-contexts] (get-in state [:template-context :contexts])
+  (let [{{open-delim :open close-delim :close} :delimiters
+         :keys [line-nodes contexts]} template-context
+        [current-context & rest-contexts] contexts
         _ (read-delimiter reader open-delim)
         ensure-close-section? (= \/ (reader/read-char reader))
         {:keys [ks read-cnt err]} (read-keys reader close-delim)
         _ (read-delimiter reader close-delim)]
     (cond
       (and ensure-close-section? (= current-context ks) (nil? err))
-      (let [close-section-tag-node (ast/close-section-tag ks (ast/template-context (update template-context :contexts pop)))]
+      (let [standalone (standalone? line-nodes)
+            tc (-> (->min-tc template-context)
+                   (assoc :standalone? standalone))
+            close-section-tag-node (ast/close-section-tag ks tc)]
         (-> state
-            (update-in [:ast] mzip/assoc-close-section-tag close-section-tag-node)
-            (update-in [:ast] mzip/out-section)
+            (update-in [:ast] mzip/append-node close-section-tag-node)
+            (cond-> (and (not standalone) (tag-contains? line-nodes))
+              (update-in [:ast] mzip/look-behind-for-not-standalone))
             (update-in [:template-context :contexts] pop)
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
             (assoc-in [:template-context :standalone?] false)))
@@ -259,7 +308,7 @@
           (update state :ast mzip/complete)
 
           (= (ustr/char-at open-delim 0) c)
-          (let [open-delim' (read-delimiter reader open-delim)
+          (let [open-delim' (:delim (read-delimiter reader open-delim))
                 sigil (reader/read-char reader)
                 _ (reader/unread-chars reader (cond-> open-delim' sigil (str sigil)))]
             (if (= open-delim open-delim')
