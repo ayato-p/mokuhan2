@@ -2,8 +2,12 @@
   (:require [clojure.string :as str]))
 
 ;; StringBuilder
-(defn string-builder []
-  (StringBuilder.))
+(defn string-builder
+  ([]
+   (string-builder 10))
+
+  ([n]
+   (StringBuilder. n)))
 
 (defn append [sb s]
   (.append sb s))
