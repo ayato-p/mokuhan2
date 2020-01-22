@@ -87,24 +87,21 @@
    (section open-tag close-tag []))
   ([open-tag close-tag nodes]
    {:type ::section
-    :o-tag open-tag
-    :c-tag close-tag
-    :nodes nodes}))
-
-(defn assoc-open-section-tag [section open-tag]
-  (assoc section :o-tag open-tag))
-
-(defn assoc-close-section-tag [section close-tag]
-  (assoc section :c-tag close-tag))
+    :closed? (some? close-tag)
+    :nodes (-> []
+               (conj open-tag)
+               (into nodes)
+               (conj close-tag))}))
 
 (defn section->mustache-str
-  [{:keys [o-tag c-tag nodes]}]
-  (str (section-open-tag->mustache-str o-tag)
-       (reduce (fn [^StringBuilder sb node]
-                 (.append sb (node->mustache-str node)))
-               (StringBuilder. (count nodes))
-               nodes)
-       (section-close-tag->mustache-str c-tag)))
+  [{:keys [closed? nodes]}]
+  (-> (section-open-tag->mustache-str (first nodes))
+      (str (reduce (fn [sb node]
+                     (ustr/append sb (node->mustache-str node)))
+                   (ustr/string-builder (count nodes))
+                   (when (seq nodes)
+                     (subvec nodes 1 (dec (count nodes))))))
+      (cond-> closed? (str (section-close-tag->mustache-str (last nodes))))))
 
 (defn inverted-section-open-tag [keys template-context]
   {:type ::inverted-section-open-tag
@@ -135,18 +132,20 @@
    (inverted-section open-tag close-tag []))
   ([open-tag close-tag nodes]
    {:type ::inverted-section
-    :o-tag open-tag
-    :c-tag close-tag
-    :nodes nodes}))
+    :closed? (some? close-tag)
+    :nodes (-> []
+               (conj open-tag)
+               (into nodes)
+               (conj close-tag))}))
 
 (defn inverted-section->mustache-str
-  [{:keys [o-tag c-tag nodes]}]
-  (str (inverted-section-open-tag->mustache-str o-tag)
-       (reduce (fn [^StringBuilder sb node]
-                 (.append sb (node->mustache-str node)))
-               (StringBuilder. (count nodes))
-               nodes)
-       (inverted-section-close-tag->mustache-str c-tag)))
+  [{:keys [closed? nodes]}]
+  (-> (inverted-section-open-tag->mustache-str (first nodes))
+      (str (reduce (fn [sb node]
+                     (ustr/append sb (node->mustache-str node)))
+                   (ustr/string-builder (count nodes))
+                   (when (seq nodes) (subvec nodes 1 (dec (count nodes))))))
+      (cond-> closed? (str (inverted-section-close-tag->mustache-str (last nodes))))))
 
 (defn partial [key template-context]
   {:type ::partial
