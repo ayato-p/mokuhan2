@@ -99,7 +99,7 @@
       (str (reduce (fn [sb node]
                      (ustr/append sb (node->mustache-str node)))
                    (ustr/string-builder (count nodes))
-                   (when (seq nodes)
+                   (when (< 1 (count nodes))
                      (subvec nodes 1 (dec (count nodes))))))
       (cond-> closed? (str (section-close-tag->mustache-str (last nodes))))))
 

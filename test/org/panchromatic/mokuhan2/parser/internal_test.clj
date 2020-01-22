@@ -4,6 +4,7 @@
             [org.panchromatic.mokuhan2.ast2 :as ast]
             [org.panchromatic.mokuhan2.parser.internal :as sut]
             [org.panchromatic.mokuhan2.reader :as reader]
+            [org.panchromatic.mokuhan2.util.string :as ustr]
             [org.panchromatic.mokuhan2.zip2 :as mzip]))
 
 (defn- test-reader
@@ -345,219 +346,211 @@
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
                    :error))))))
 
-#_(t/deftest parse-open-section-tag-test
-    (t/testing "Successes"
-      (with-open [r (test-reader "{{#foo}}" 3)]
-        (let [state (sut/parse-open-section-tag r initial-state)]
-          (t/is (= {:ast (ast/syntax-tree
-                          [(ast/section
-                            (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
-                                                                                1
-                                                                                1
-                                                                                true
-                                                                                ())))])
-                    :template-context {:delimiters default-delimiters
+(t/deftest parse-open-section-tag-test
+  (t/testing "Successes"
+    (with-open [r (test-reader "{{#foo}}" 3)]
+      (let [state (sut/parse-open-section-tag r initial-state)]
+        (t/is (= {:ast (ast/syntax-tree
+                        [(ast/section
+                          (ast/section-open-tag ["foo"] {:delimiters default-delimiters
+                                                         :row 1
+                                                         :column 1
+                                                         :standalone? true
+                                                         :contexts []}))])
+                  :template-context {:delimiters default-delimiters
+                                     :row 1
+                                     :column 9
+                                     :line-nodes [::ast/section-open-tag]
+                                     :contexts [["foo"]]}}
+                 (update state :ast mzip/complete)))
+
+        (t/is (= ::ast/section-open-tag
+                 (:type (zip/node (:ast state)))))
+
+        (t/is (= "" (slurp r)))))
+
+    (with-open [r (test-reader "{{#foo.bar}}" 3)]
+      (let [state (sut/parse-open-section-tag r initial-state)]
+        (t/is (= {:ast (ast/syntax-tree
+                        [(ast/section
+                          (ast/section-open-tag ["foo" "bar"] {:delimiters default-delimiters
+                                                               :row 1
+                                                               :column 1
+                                                               :standalone? true
+                                                               :contexts []}))])
+                  :template-context {:delimiters default-delimiters
+                                     :row 1
+                                     :column 13
+                                     :line-nodes [::ast/section-open-tag]
+                                     :contexts [["foo" "bar"]]}}
+                 (update state :ast mzip/complete)))
+
+        (t/is (= ::ast/section-open-tag
+                 (:type (zip/node (:ast state)))))
+
+        (t/is (= "" (slurp r))))))
+
+  (t/testing "Errors"
+    (with-open [reader (test-reader "{{#foo")]
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
+                :cause :unclosed-tag
+                :occurred {:row 1 :column 1 :contexts ()}}
+               (-> (sut/parse-open-section-tag reader initial-state)
+                   :error))))
+
+    (with-open [reader (test-reader "{{#fo o")]
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
+                :cause :invalid-tag-name
+                :occurred {:row 1 :column 1 :contexts ()}}
+               (-> (sut/parse-open-section-tag reader initial-state)
+                   :error))))))
+
+(def opened-section-ast
+  (let [open-section-tag-node
+        (ast/section-open-tag ["foo"] {:delimiters default-delimiters
                                        :row 1
-                                       :column 9
-                                       :standalone? false
-                                       :contexts '(["foo"])}}
-                   (update state :ast mzip/complete)))
+                                       :column 1
+                                       :standalone? true
+                                       :contexts []})]
+    (-> (mzip/ast-zip)
+        (mzip/open-section open-section-tag-node))))
 
-          (t/is (= ::ast/section
-                   (:type (zip/node (:ast state)))))
+(def opened-section-state
+  {:ast opened-section-ast
+   :template-context {:delimiters default-delimiters
+                      :row 1
+                      :column (-> opened-section-ast
+                                  mzip/complete
+                                  ast/syntax-tree->mustache-str
+                                  ustr/length
+                                  inc)
+                      :line-nodes [::ast/section-open-tag]
+                      :contexts '(["foo"])}})
 
-          (t/is (= "" (slurp r)))))
+(t/deftest parse-close-section-tag-test
+  (t/testing "Successes"
+    (with-open [reader (test-reader "{{/foo}}" 3)]
+      (let [state (sut/parse-close-section-tag reader opened-section-state)]
+        (t/is (= {:ast (ast/syntax-tree
+                        [(ast/section
+                          (ast/section-open-tag ["foo"] {:delimiters default-delimiters
+                                                         :row 1
+                                                         :column 1
+                                                         :standalone? false
+                                                         :contexts []})
+                          (ast/section-close-tag ["foo"] {:delimiters default-delimiters
+                                                          :row 1
+                                                          :column 9
+                                                          :standalone? false
+                                                          :contexts []})
+                          [])])
+                  :template-context {:delimiters default-delimiters
+                                     :row 1
+                                     :column 17
+                                     :line-nodes [::ast/section-open-tag ::ast/section-close-tag]
+                                     :contexts []}}
+                 (update state :ast mzip/complete))))))
 
-      (with-open [r (test-reader "{{#foo.bar}}" 3)]
-        (let [state (sut/parse-open-section-tag r initial-state)]
-          (t/is (= {:ast (ast/syntax-tree
-                          [(ast/section
-                            (ast/open-section-tag ["foo" "bar"] (ast/template-context default-delimiters
-                                                                                      1
-                                                                                      1
-                                                                                      true
-                                                                                      ())))])
-                    :template-context {:delimiters default-delimiters
+  (t/testing "Errors"
+    (with-open [reader (test-reader "{{/bar}}" 3)]
+      (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
+                        :cause :unclosed-section
+                        :occurred {:row 1
+                                   :column 9
+                                   :contexts '(["foo"])}}}
+               (sut/parse-close-section-tag reader opened-section-state))))
+
+    (with-open [reader (test-reader "{{/foo")]
+      (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
+                        :cause :unclosed-tag
+                        :occurred {:row 1
+                                   :column 9
+                                   :contexts '(["foo"])}}}
+               (sut/parse-close-section-tag reader opened-section-state))))
+
+    (with-open [reader (test-reader "{{/fo o}}")]
+      (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
+                        :cause :invalid-tag-name
+                        :occurred {:row 1
+                                   :column 9
+                                   :contexts '(["foo"])}}}
+               (sut/parse-close-section-tag reader opened-section-state))))))
+
+(t/deftest parse-test
+  (t/testing "Successes"
+    (with-open [r (test-reader "Hello, world" 3)]
+      (let [{:keys [ast error]} (sut/parse r initial-state)]
+        (t/is (= (ast/syntax-tree
+                  [(ast/text "Hello," {:delimiters default-delimiters
                                        :row 1
-                                       :column 13
-                                       :standalone? false
-                                       :contexts '(["foo" "bar"])}}
-                   (update state :ast mzip/complete)))
+                                       :column 1
+                                       :contexts []})
+                   (ast/whitespace " " {:delimiters default-delimiters
+                                        :row 1
+                                        :column 7
+                                        :contexts []})
+                   (ast/text "world" {:delimiters default-delimiters
+                                      :row 1
+                                      :column 8
+                                      :contexts []})])
+                 ast))
 
-          (t/is (= ::ast/section
-                   (:type (zip/node (:ast state)))))
+        (t/is (nil? error))))
 
-          (t/is (= "" (slurp r))))))
+    (with-open [r (test-reader "{Hello}, {{name}}" 3)]
+      (let [{:keys [ast error]} (sut/parse r initial-state)]
+        (t/is (= (ast/syntax-tree
+                  [(ast/text "{Hello}," {:delimiters default-delimiters
+                                         :row 1
+                                         :column 1
+                                         :contexts []})
+                   (ast/whitespace " " {:delimiters default-delimiters
+                                        :row 1
+                                        :column 9
+                                        :contexts []})
+                   (ast/variable-tag ["name"] {:delimiters default-delimiters
+                                               :row 1
+                                               :column 10
+                                               :standalone? false
+                                               :contexts []})])
+                 ast))
 
-    (t/testing "Errors"
-      (with-open [reader (test-reader "{{#foo")]
+        (t/is (nil? error))))
+
+    (with-open [r (test-reader "Hello, {{name}}" 3)]
+      (let [{:keys [ast error]} (sut/parse r initial-state)]
+        (t/is (= (ast/syntax-tree
+                  [(ast/text "Hello," {:delimiters default-delimiters
+                                       :row 1
+                                       :column 1
+                                       :contexts []})
+                   (ast/whitespace " " {:delimiters default-delimiters
+                                        :row 1
+                                        :column 7
+                                        :contexts []})
+                   (ast/variable-tag ["name"] {:delimiters default-delimiters
+                                               :row 1
+                                               :column 8
+                                               :standalone? false
+                                               :contexts []})])
+                 ast))
+
+        (t/is (nil? error)))))
+
+  (t/testing "Errors"
+    (with-open [r (test-reader "Hello, {{name" 3)]
+      (let [{:keys [ast error]} (sut/parse r initial-state)]
         (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                   :cause :unclosed-tag
-                  :occurred {:row 1 :column 1 :contexts ()}}
-                 (-> (sut/parse-open-section-tag reader initial-state)
-                     :error))))
+                  :occurred {:row 1 :column 8 :contexts ()}}
+                 error))))
 
-      (with-open [reader (test-reader "{{#fo o")]
+    (with-open [r (test-reader "Hello, {{&name" 3)]
+      (let [{:keys [ast error]} (sut/parse r initial-state)]
         (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
-                  :cause :invalid-tag-name
-                  :occurred {:row 1 :column 1 :contexts ()}}
-                 (-> (sut/parse-open-section-tag reader initial-state)
-                     :error))))))
-
-#_(def opened-section-ast
-    (let [open-section-tag-node
-          (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
-                                                              1
-                                                              1
-                                                              false
-                                                              ()))]
-      (-> (mzip/ast-zip)
-          (mzip/append&into-section)
-          (mzip/assoc-open-section-tag open-section-tag-node))))
-
-#_(def opened-section-state
-    {:ast opened-section-ast
-     :template-context {:delimiters default-delimiters
-                        :row 1
-                        :column (-> opened-section-ast
-                                    mzip/complete
-                                    ast/syntax-tree->mustache-str
-                                    ustr/length
-                                    inc)
-                        :standalone? false
-                        :contexts '(["foo"])}})
-
-#_(t/deftest parse-close-section-tag-test
-    (t/testing "Successes"
-      (with-open [reader (test-reader "{{/foo}}" 3)]
-        (let [state (sut/parse-close-section-tag reader opened-section-state)]
-          (t/is (= {:ast (ast/syntax-tree
-                          [(ast/section
-                            (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
-                                                                                1
-                                                                                1
-                                                                                false
-                                                                                ()))
-                            (ast/close-section-tag ["foo"] (ast/template-context default-delimiters
-                                                                                 1
-                                                                                 9
-                                                                                 false
-                                                                                 '()))
-                            [])])
-                    :template-context {:delimiters default-delimiters
-                                       :row 1
-                                       :column 17
-                                       :standalone? false
-                                       :contexts '()}}
-                   (update state :ast mzip/complete))))))
-
-    (t/testing "Errors"
-      (with-open [reader (test-reader "{{/bar}}" 3)]
-        (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
-                          :cause :unclosed-section
-                          :occurred {:row 1
-                                     :column 9
-                                     :contexts '(["foo"])}}}
-                 (sut/parse-close-section-tag reader opened-section-state))))
-
-      (with-open [reader (test-reader "{{/foo")]
-        (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
-                          :cause :unclosed-tag
-                          :occurred {:row 1
-                                     :column 9
-                                     :contexts '(["foo"])}}}
-                 (sut/parse-close-section-tag reader opened-section-state))))
-
-      (with-open [reader (test-reader "{{/fo o}}")]
-        (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
-                          :cause :invalid-tag-name
-                          :occurred {:row 1
-                                     :column 9
-                                     :contexts '(["foo"])}}}
-                 (sut/parse-close-section-tag reader opened-section-state))))))
-
-#_(t/deftest parse-test
-    (t/testing "Successes"
-      (with-open [r (test-reader "Hello, world" 3)]
-        (let [{:keys [ast error]} (sut/parse r initial-state)]
-          (t/is (= (ast/syntax-tree
-                    [(ast/text "Hello," (ast/template-context default-delimiters
-                                                              1
-                                                              1
-                                                              true
-                                                              ()))
-                     (ast/whitespace " " (ast/template-context default-delimiters
-                                                               1
-                                                               7
-                                                               false
-                                                               ()))
-                     (ast/text "world" (ast/template-context default-delimiters
-                                                             1
-                                                             8
-                                                             false
-                                                             ()))])
-                   ast))
-
-          (t/is (nil? error))))
-
-      (with-open [r (test-reader "{Hello}, {{name}}" 3)]
-        (let [{:keys [ast error]} (sut/parse r initial-state)]
-          (t/is (= (ast/syntax-tree
-                    [(ast/text "{Hello}," (ast/template-context default-delimiters
-                                                                1
-                                                                1
-                                                                true
-                                                                ()))
-                     (ast/whitespace " " (ast/template-context default-delimiters
-                                                               1
-                                                               9
-                                                               false
-                                                               ()))
-                     (ast/variable-tag ["name"] (ast/template-context default-delimiters
-                                                                      1
-                                                                      10
-                                                                      false
-                                                                      ()))])
-                   ast))
-
-          (t/is (nil? error))))
-
-      (with-open [r (test-reader "Hello, {{name}}" 3)]
-        (let [{:keys [ast error]} (sut/parse r initial-state)]
-          (t/is (= (ast/syntax-tree
-                    [(ast/text "Hello," (ast/template-context default-delimiters
-                                                              1
-                                                              1
-                                                              true
-                                                              ()))
-                     (ast/whitespace " " (ast/template-context default-delimiters
-                                                               1
-                                                               7
-                                                               false
-                                                               ()))
-                     (ast/variable-tag ["name"] (ast/template-context default-delimiters
-                                                                      1
-                                                                      8
-                                                                      false
-                                                                      ()))])
-                   ast))
-
-          (t/is (nil? error)))))
-
-    (t/testing "Errors"
-      (with-open [r (test-reader "Hello, {{name" 3)]
-        (let [{:keys [ast error]} (sut/parse r initial-state)]
-          (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
-                    :cause :unclosed-tag
-                    :occurred {:row 1 :column 8 :contexts ()}}
-                   error))))
-
-      (with-open [r (test-reader "Hello, {{&name" 3)]
-        (let [{:keys [ast error]} (sut/parse r initial-state)]
-          (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
-                    :cause :unclosed-tag
-                    :occurred {:row 1 :column 8 :contexts ()}}
-                   error))))))
+                  :cause :unclosed-tag
+                  :occurred {:row 1 :column 8 :contexts ()}}
+                 error))))))
 
 (t/deftest parse|standalone-test
   (with-open [reader (test-reader "{{x}}" 3)]
@@ -653,5 +646,33 @@
                                                 :column 9
                                                 :standalone? false
                                                 :contexts []}))])
+             (-> (sut/parse reader initial-state)
+                 :ast))))
+
+  (with-open [reader (test-reader "{{#x}}{{#y}}{{/y}}{{/x}}" 3)]
+    (t/is (= (ast/syntax-tree
+              [(ast/section
+                (ast/section-open-tag ["x"] {:delimiters default-delimiters
+                                             :row 1
+                                             :column 1
+                                             :standalone? false
+                                             :contexts []})
+                (ast/section-close-tag ["x"] {:delimiters default-delimiters
+                                              :row 1
+                                              :column 19
+                                              :standalone? false
+                                              :contexts []})
+                [(ast/section
+                  (ast/section-open-tag ["y"] {:delimiters default-delimiters
+                                               :row 1
+                                               :column 7
+                                               :standalone? false
+                                               :contexts [["x"]]})
+                  (ast/section-close-tag ["y"] {:delimiters default-delimiters
+                                                :row 1
+                                                :column 13
+                                                :standalone? false
+                                                :contexts [["x"]]})
+                  [])])])
              (-> (sut/parse reader initial-state)
                  :ast)))))

@@ -201,9 +201,9 @@
                    (assoc :standalone? standalone))
             variable-tag-node (ast/variable-tag ks tc)]
         (-> state
-            (update-in [:ast] mzip/append-node variable-tag-node)
             (cond-> (and (not standalone) (tag-contains? line-nodes))
-              (update-in [:ast] mzip/look-behind-for-not-standalone))
+              (update-in [:ast] mzip/look-behind))
+            (update-in [:ast] mzip/append-node variable-tag-node)
             (update-in [:template-context :column] + (apply + (map :read-cnt [o k c])))
             (update-in [:template-context :line-nodes] conj (:type variable-tag-node))))
 
@@ -222,9 +222,9 @@
                    (assoc :standalone? standalone))
             unescaped-variable-tag-node (ast/unescaped-variable-tag ks tc)]
         (-> state
-            (update-in [:ast] mzip/append-node unescaped-variable-tag-node)
             (cond-> (and (not standalone) (tag-contains? line-nodes))
-              (update-in [:ast] mzip/look-behind-for-not-standalone))
+              (update-in [:ast] mzip/look-behind))
+            (update-in [:ast] mzip/append-node unescaped-variable-tag-node)
             (update-in [:template-context :column] + (apply + 1 (map :read-cnt [o k c])))
             (update-in [:template-context :line-nodes] conj (:type unescaped-variable-tag-node))))
 
@@ -241,21 +241,21 @@
       (let [standalone (standalone? line-nodes)
             tc (-> (->min-tc template-context)
                    (assoc :standalone? standalone))
-            open-section-tag-node (ast/section-open-tag ks tc)]
+            section-open-tag-node (ast/section-open-tag ks tc)]
         (-> state
-            (update-in [:ast] mzip/append-node open-section-tag-node)
             (cond-> (and (not standalone) (tag-contains? line-nodes))
-              (update-in [:ast] mzip/look-behind-for-not-standalone))
+              (update-in [:ast] mzip/look-behind))
+            (update-in [:ast] mzip/open-section section-open-tag-node)
             (update-in [:template-context :contexts] conj ks)
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
-            (assoc-in [:template-context :standalone?] false)))
+            (update-in [:template-context :line-nodes] conj (:type section-open-tag-node))))
 
       (parse-error err template-context))))
 
 (defn parse-close-section-tag [reader {:keys [template-context] :as state}]
   (let [{{open-delim :open close-delim :close} :delimiters
          :keys [line-nodes contexts]} template-context
-        [current-context & rest-contexts] contexts
+        current-context (peek contexts)
         _ (read-delimiter reader open-delim)
         ensure-close-section? (= \/ (reader/read-char reader))
         {:keys [ks read-cnt err]} (read-keys reader close-delim)
@@ -264,15 +264,16 @@
       (and ensure-close-section? (= current-context ks) (nil? err))
       (let [standalone (standalone? line-nodes)
             tc (-> (->min-tc template-context)
+                   (update :contexts pop)
                    (assoc :standalone? standalone))
-            close-section-tag-node (ast/section-open-tag ks tc)]
+            section-close-tag-node (ast/section-close-tag ks tc)]
         (-> state
-            (update-in [:ast] mzip/append-node close-section-tag-node)
             (cond-> (and (not standalone) (tag-contains? line-nodes))
-              (update-in [:ast] mzip/look-behind-for-not-standalone))
+              (update-in [:ast] mzip/look-behind))
+            (update-in [:ast] mzip/close-section section-close-tag-node)
             (update-in [:template-context :contexts] pop)
             (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
-            (assoc-in [:template-context :standalone?] false)))
+            (update-in [:template-context :line-nodes] conj (:type section-close-tag-node))))
 
       (and (nil? err) (not= current-context ks))
       (parse-error :unclosed-section template-context)
