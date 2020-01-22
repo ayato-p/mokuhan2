@@ -22,33 +22,39 @@
 
   (t/is (= (ast/syntax-tree
             [(ast/section
-              (ast/open-section-tag ["foo"] dummy-tc)
-              (ast/close-section-tag ["foo"] dummy-tc)
+              (ast/section-open-tag ["foo"] dummy-tc)
+              (ast/section-close-tag ["foo"] dummy-tc)
               [])])
            (-> (mzip/ast-zip)
-               (zip/append-child (ast/section))
+               (mzip/append-node (ast/section))
                zip/down
-               (zip/edit assoc :o-tag (ast/open-section-tag ["foo"] dummy-tc))
-               (zip/edit assoc :c-tag (ast/close-section-tag ["foo"] dummy-tc))
+               (mzip/append-node (ast/section-open-tag ["foo"] dummy-tc))
+               (mzip/append-node (ast/section-close-tag ["foo"] dummy-tc))
+               zip/up
+               (zip/edit assoc :closed? true)
                zip/root)))
 
   (t/is (= (ast/syntax-tree
             [(ast/section
-              (ast/open-section-tag ["foo"] dummy-tc)
-              (ast/close-section-tag ["foo"] dummy-tc)
+              (ast/section-open-tag ["foo"] dummy-tc)
+              (ast/section-close-tag ["foo"] dummy-tc)
               [(ast/section
-                (ast/open-section-tag ["bar"] dummy-tc)
-                (ast/close-section-tag ["bar"] dummy-tc)
+                (ast/section-open-tag ["bar"] dummy-tc)
+                (ast/section-close-tag ["bar"] dummy-tc)
                 [])])])
            (-> (mzip/ast-zip)
-               (zip/append-child (ast/section))
+               (mzip/append-node (ast/section))
                zip/down
-               (zip/edit assoc :o-tag (ast/open-section-tag ["foo"] dummy-tc))
-               (zip/edit assoc :c-tag (ast/close-section-tag ["foo"] dummy-tc))
-               (zip/append-child (ast/section))
+               (mzip/append-node (ast/section-open-tag ["foo"] dummy-tc))
+               (mzip/append-node (ast/section))
                zip/down
-               (zip/edit assoc :o-tag (ast/open-section-tag ["bar"] dummy-tc))
-               (zip/edit assoc :c-tag (ast/close-section-tag ["bar"] dummy-tc))
+               (mzip/append-node (ast/section-open-tag ["bar"] dummy-tc))
+               (mzip/append-node (ast/section-close-tag ["bar"] dummy-tc))
+               zip/up
+               (zip/edit assoc :closed? true)
+               (mzip/append-node (ast/section-close-tag ["foo"] dummy-tc))
+               zip/up
+               (zip/edit assoc :closed? true)
                zip/root))))
 
 (t/deftest append-node-test
@@ -77,8 +83,8 @@
                  (ast/variable-tag ["y"] (assoc dummy-tc :standalone? false))])
                (-> (mzip/ast-zip)
                    (mzip/append-node tag-node1)
+                   mzip/look-behind
                    (mzip/append-node tag-node2)
-                   mzip/look-behind-for-not-standalone
                    mzip/complete)))))
 
   (t/testing "ignore whitespace"
@@ -92,6 +98,74 @@
                (-> (mzip/ast-zip)
                    (mzip/append-node whitespace-node)
                    (mzip/append-node tag-node1)
+                   mzip/look-behind
                    (mzip/append-node tag-node2)
-                   mzip/look-behind-for-not-standalone
-                   mzip/complete))))))
+                   mzip/complete)))
+
+      (t/is (= (ast/syntax-tree
+                [(ast/variable-tag ["x"] (assoc dummy-tc :standalone? false))
+                 (ast/whitespace "  " dummy-tc)
+                 (ast/variable-tag ["y"] (assoc dummy-tc :standalone? false))])
+               (-> (mzip/ast-zip)
+                   (mzip/append-node tag-node1)
+                   (mzip/append-node whitespace-node)
+                   mzip/look-behind
+                   (mzip/append-node tag-node2)
+                   mzip/complete)))))
+
+  (t/testing "with section"
+    (t/is (= (ast/syntax-tree
+              [(ast/variable-tag ["y"] (assoc dummy-tc :standalone? false))
+               (ast/section
+                (ast/section-open-tag ["x"] (assoc dummy-tc :standalone? false)))])
+             (-> (mzip/ast-zip)
+                 (mzip/append-node (ast/variable-tag ["y"] dummy-tc))
+                 mzip/look-behind
+                 (mzip/open-section (ast/section-open-tag ["x"] (assoc dummy-tc :standalone? false)))
+                 mzip/complete)))
+
+    (t/is (= (ast/syntax-tree
+              [(ast/section
+                (ast/section-open-tag ["x"] (assoc dummy-tc :standalone? false))
+                nil
+                [(ast/variable-tag ["y"] (assoc dummy-tc :standalone? false))])])
+             (-> (mzip/ast-zip)
+                 (mzip/open-section (ast/section-open-tag ["x"] (assoc dummy-tc :standalone? true)))
+                 mzip/look-behind
+                 (mzip/append-node (ast/variable-tag ["y"] (assoc dummy-tc :standalone? false)))
+                 mzip/complete)))
+
+    (t/is (= (ast/syntax-tree
+              [(ast/section
+                (ast/section-open-tag ["x"] (assoc dummy-tc :standalone? true))
+                (ast/section-close-tag ["x"] (assoc dummy-tc :standalone? false))
+                [(ast/newline "\r\n" dummy-tc)])
+               (ast/variable-tag ["y"] (assoc dummy-tc :standalone? false))])
+             (-> (mzip/ast-zip)
+                 (mzip/open-section (ast/section-open-tag ["x"] (assoc dummy-tc :standalone? true)))
+                 (mzip/append-node (ast/newline "\r\n" dummy-tc))
+
+                 (mzip/close-section (ast/section-close-tag ["x"] (assoc dummy-tc :standalone? true)))
+                 mzip/look-behind
+                 (mzip/append-node (ast/variable-tag ["y"] (assoc dummy-tc :standalone? false)))
+                 mzip/complete)))))
+
+(t/deftest open-section-test
+  (t/testing "section should be opend"
+    (t/is (= (ast/syntax-tree
+              [(ast/section
+                (ast/section-open-tag ["x"] dummy-tc))])
+             (-> (mzip/ast-zip)
+                 (mzip/open-section (ast/section-open-tag ["x"] dummy-tc))
+                 mzip/complete)))))
+
+(t/deftest close-section-test
+  (t/testing "section should be closed"
+    (t/is (= (ast/syntax-tree
+              [(ast/section
+                (ast/section-open-tag ["x"] dummy-tc)
+                (ast/section-close-tag ["x"] dummy-tc))])
+             (-> (mzip/ast-zip)
+                 (mzip/open-section (ast/section-open-tag ["x"] dummy-tc))
+                 (mzip/close-section (ast/section-close-tag ["x"] dummy-tc))
+                 mzip/complete)))))

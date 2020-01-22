@@ -88,10 +88,10 @@
   ([open-tag close-tag nodes]
    {:type ::section
     :closed? (some? close-tag)
-    :nodes (-> []
-               (conj open-tag)
-               (into nodes)
-               (conj close-tag))}))
+    :nodes (cond-> []
+             open-tag (conj open-tag)
+             (seq nodes) (into nodes)
+             close-tag (conj close-tag))}))
 
 (defn section->mustache-str
   [{:keys [closed? nodes]}]

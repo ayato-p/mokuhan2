@@ -1,4 +1,5 @@
 (ns org.panchromatic.mokuhan2.zip2
+  (:refer-clojure :exclude [nil?])
   (:require [clojure.zip :as zip]
             [org.panchromatic.mokuhan2.ast2 :as ast]))
 
@@ -20,36 +21,49 @@
   ([]
    (ast-zip (ast/syntax-tree)))
   ([root]
-   (zip/zipper branch?
-               children
-               make-node
-               root)))
+   (-> (zip/zipper branch? children make-node root)
+       zip/down)))
 
 ;; manipulator
 
+(defn- nil? [loc]
+  (clojure.core/nil? (zip/node loc)))
+
 (defn append-node
-  "Insert a primitive node then moved to there."
-  [loc primitive]
-  (if (zip/branch? loc)
-    (-> (zip/insert-child loc primitive)
-        zip/down)
-    (-> (zip/insert-right loc primitive)
+  "Insert a node to right then moved to there."
+  [loc node]
+  (if (nil? loc)
+    (zip/replace loc node)
+    (-> (zip/insert-right loc node)
         zip/right)))
 
 (defn- tag-node? [node]
   (contains? ast/tags (:type node)))
 
-(defn look-behind-for-not-standalone [loc]
-  (let [current (zip/node loc)]
-    (loop [loc loc]
-      (let [left-node (some-> loc zip/left zip/node)]
-        (if (or (nil? left-node)
-                (= ::ast/newline (:type left-node))
-                (false? (ast/standalone? left-node)))
-          (zip/rightmost loc)
-          (recur (cond-> (zip/left loc)
-                   (tag-node? left-node)
-                   (zip/edit ast/assoc-standalone false))))))))
+(defn look-behind [loc]
+  (let [loc (loop [loc loc]
+              (let [node (zip/node loc)]
+                (cond
+                  (tag-node? node)
+                  (zip/edit loc ast/assoc-standalone false)
+                  (and (= ::ast/section (:type node))
+                       (:closed? node))
+                  (-> (zip/down loc)
+                      zip/rightmost
+                      (zip/edit ast/assoc-standalone false)
+                      zip/up)
+                  :else
+                  (recur (zip/left loc)))))]
+    (zip/rightmost loc)))
+
+(defn open-section [loc open-tag]
+  (-> (append-node loc (ast/section open-tag))
+      zip/down))
+
+(defn close-section [loc close-tag]
+  (-> (append-node loc close-tag)
+      zip/up
+      (zip/edit assoc :closed? true)))
 
 (defn complete [loc]
   (zip/root loc))
