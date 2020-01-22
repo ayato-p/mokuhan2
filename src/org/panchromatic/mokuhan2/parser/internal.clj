@@ -241,7 +241,7 @@
       (let [standalone (standalone? line-nodes)
             tc (-> (->min-tc template-context)
                    (assoc :standalone? standalone))
-            open-section-tag-node (ast/open-section-tag ks tc)]
+            open-section-tag-node (ast/section-open-tag ks tc)]
         (-> state
             (update-in [:ast] mzip/append-node open-section-tag-node)
             (cond-> (and (not standalone) (tag-contains? line-nodes))
@@ -265,7 +265,7 @@
       (let [standalone (standalone? line-nodes)
             tc (-> (->min-tc template-context)
                    (assoc :standalone? standalone))
-            close-section-tag-node (ast/close-section-tag ks tc)]
+            close-section-tag-node (ast/section-open-tag ks tc)]
         (-> state
             (update-in [:ast] mzip/append-node close-section-tag-node)
             (cond-> (and (not standalone) (tag-contains? line-nodes))

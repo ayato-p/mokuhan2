@@ -28,52 +28,52 @@
 
 (t/deftest open-section-tag->mustache-str-test
   (t/is (= "{{#foo}}"
-           (-> (ast/open-section-tag ["foo"] tc)
-               (ast/open-section-tag->mustache-str))))
+           (-> (ast/section-open-tag ["foo"] tc)
+               (ast/section-open-tag->mustache-str))))
 
   (t/is (= "{{#foo.bar}}"
-           (-> (ast/open-section-tag ["foo" "bar"] tc)
-               (ast/open-section-tag->mustache-str)))))
+           (-> (ast/section-open-tag ["foo" "bar"] tc)
+               (ast/section-open-tag->mustache-str)))))
 
 (t/deftest close-section-tag->mustache-str-test
   (t/is (= "{{/foo}}"
-           (-> (ast/close-section-tag ["foo"] tc)
-               (ast/close-section-tag->mustache-str))))
+           (-> (ast/section-close-tag ["foo"] tc)
+               (ast/section-close-tag->mustache-str))))
 
   (t/is (= "{{/foo.bar}}"
-           (-> (ast/close-section-tag ["foo" "bar"] tc)
-               (ast/close-section-tag->mustache-str)))))
+           (-> (ast/section-close-tag ["foo" "bar"] tc)
+               (ast/section-close-tag->mustache-str)))))
 
 (t/deftest section->mustache-str-test
   (t/is (= "{{#foo}}{{bar}}{{/foo}}"
-           (-> (ast/section (ast/open-section-tag ["foo"] tc)
-                            (ast/close-section-tag ["foo"] tc)
+           (-> (ast/section (ast/section-open-tag ["foo"] tc)
+                            (ast/section-close-tag ["foo"] tc)
                             [(ast/variable-tag ["bar"] tc)])
                (ast/section->mustache-str)))))
 
 (t/deftest open-inverted-section-tag->mustache-str-test
   (t/is (= "{{^foo}}"
-           (-> (ast/open-inverted-section-tag ["foo"] tc)
-               (ast/open-inverted-section-tag->mustache-str))))
+           (-> (ast/inverted-section-open-tag ["foo"] tc)
+               (ast/inverted-section-open-tag->mustache-str))))
 
   (t/is (= "{{^foo.bar}}"
-           (-> (ast/open-inverted-section-tag ["foo" "bar"] tc)
-               (ast/open-inverted-section-tag->mustache-str)))))
+           (-> (ast/inverted-section-open-tag ["foo" "bar"] tc)
+               (ast/inverted-section-open-tag->mustache-str)))))
 
 (t/deftest close-inverted-section-tag->mustache-str-test
   (t/is (= "{{/foo}}"
-           (-> (ast/close-inverted-section-tag ["foo"] tc)
-               (ast/close-inverted-section-tag->mustache-str))))
+           (-> (ast/inverted-section-close-tag ["foo"] tc)
+               (ast/inverted-section-close-tag->mustache-str))))
 
   (t/is (= "{{/foo.bar}}"
-           (-> (ast/close-inverted-section-tag ["foo" "bar"] tc)
-               (ast/close-inverted-section-tag->mustache-str)))))
+           (-> (ast/inverted-section-close-tag ["foo" "bar"] tc)
+               (ast/inverted-section-close-tag->mustache-str)))))
 
 (t/deftest inverted-section->mustache-str-test
   (t/is (= "{{^foo}}{{bar}}{{/foo}}"
            (-> (ast/inverted-section
-                (ast/open-section-tag ["foo"] tc)
-                (ast/close-section-tag ["foo"] tc)
+                (ast/section-open-tag ["foo"] tc)
+                (ast/section-close-tag ["foo"] tc)
                 [(ast/variable-tag ["bar"] tc)])
                (ast/inverted-section->mustache-str)))))
 
@@ -108,8 +108,8 @@
               (ast/text "." tc)
               (ast/newline "\r\n" tc)
               (ast/section
-               (ast/open-section-tag ["flag"] tc)
-               (ast/close-section-tag ["flag"] tc)
+               (ast/section-open-tag ["flag"] tc)
+               (ast/section-close-tag ["flag"] tc)
                [(ast/newline "\r\n" tc)
                 (ast/text "Dear," tc)
                 (ast/whitespace " " tc)

@@ -643,15 +643,15 @@
   (with-open [reader (test-reader "{{#foo}}{{/foo}}" 3)]
     (t/is (= (ast/syntax-tree
               [(ast/section
-                (ast/open-section-tag ["foo"] (ast/template-context default-delimiters
-                                                                    1
-                                                                    1
-                                                                    false
-                                                                    ()))
-                (ast/close-section-tag ["foo"] (ast/template-context default-delimiters
-                                                                     1
-                                                                     9
-                                                                     false
-                                                                     '())))])
+                (ast/section-open-tag ["foo"] {:delimiters default-delimiters
+                                               :row 1
+                                               :column 1
+                                               :standalone? false
+                                               :contexts []})
+                (ast/section-close-tag ["foo"] {:delimiters default-delimiters
+                                                :row 1
+                                                :column 9
+                                                :standalone? false
+                                                :contexts []}))])
              (-> (sut/parse reader initial-state)
                  :ast)))))

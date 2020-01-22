@@ -1,11 +1,12 @@
 (ns org.panchromatic.mokuhan2.ast2
   (:refer-clojure :exclude [newline partial])
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [org.panchromatic.mokuhan2.util.string :as ustr]))
 
 (def tags
   #{::variable-tag ::unescaped-variable-tag
-    ::open-section-tag ::close-section-tag
-    ::open-inverted-section-tag ::close-inverted-section-tag
+    ::section-open-tag ::section-close-tag
+    ::inverted-section-open-tag ::inverted-section-close-tag
     ::set-delimiter ::partial})
 
 (declare node->mustache-str)
@@ -19,10 +20,10 @@
 
 (defn syntax-tree->mustache-str
   [{:keys [nodes] :as st}]
-  (.toString
-   (reduce (fn [^StringBuilder sb node]
-             (.append sb (node->mustache-str node)))
-           (StringBuilder. (count nodes))
+  (str
+   (reduce (fn [sb node]
+             (ustr/append sb (node->mustache-str node)))
+           (ustr/string-builder (count nodes))
            nodes)))
 
 (defn standalone? [node]
@@ -53,26 +54,26 @@
        (str/join "." ks)
        (get-in tc [:delimiters :close])))
 
-(defn open-section-tag [keys template-context]
-  {:type ::open-section-tag
+(defn section-open-tag [keys template-context]
+  {:type ::section-open-tag
    :ks keys
    :tc template-context})
 
-(defn open-section-tag->mustache-str
-  [{:keys [ks tc] :as o-sec-tag}]
-  (when o-sec-tag
+(defn section-open-tag->mustache-str
+  [{:keys [ks tc] :as sec-o-tag}]
+  (when sec-o-tag
     (str (get-in tc [:delimiters :open]) "#"
          (str/join "." ks)
          (get-in tc [:delimiters :close]))))
 
-(defn close-section-tag [keys template-context]
-  {:type ::close-section-tag
+(defn section-close-tag [keys template-context]
+  {:type ::section-close-tag
    :ks keys
    :tc template-context})
 
-(defn close-section-tag->mustache-str
-  [{:keys [ks tc] :as c-sec-tag}]
-  (when c-sec-tag
+(defn section-close-tag->mustache-str
+  [{:keys [ks tc] :as sec-c-tag}]
+  (when sec-c-tag
     (str (get-in tc [:delimiters :open]) "/"
          (str/join "." ks)
          (get-in tc [:delimiters :close]))))
@@ -98,31 +99,31 @@
 
 (defn section->mustache-str
   [{:keys [o-tag c-tag nodes]}]
-  (str (open-section-tag->mustache-str o-tag)
+  (str (section-open-tag->mustache-str o-tag)
        (reduce (fn [^StringBuilder sb node]
                  (.append sb (node->mustache-str node)))
                (StringBuilder. (count nodes))
                nodes)
-       (close-section-tag->mustache-str c-tag)))
+       (section-close-tag->mustache-str c-tag)))
 
-(defn open-inverted-section-tag [keys template-context]
-  {:type ::open-inverted-section-tag
+(defn inverted-section-open-tag [keys template-context]
+  {:type ::inverted-section-open-tag
    :ks keys
    :tc template-context})
 
-(defn open-inverted-section-tag->mustache-str
+(defn inverted-section-open-tag->mustache-str
   [{:keys [ks tc]}]
   (str (get-in tc [:delimiters :open]) "^"
        (str/join "." ks)
        (get-in tc [:delimiters :close])))
 
-(defn close-inverted-section-tag [keys template-context]
-  {:type ::close-inverted-section-tag
+(defn inverted-section-close-tag [keys template-context]
+  {:type ::inverted-section-close-tag
    :ks keys
    :tc template-context})
 
-(defn close-inverted-section-tag->mustache-str
-  [{:keys [ks tc] :as c-in-sec-tag}]
+(defn inverted-section-close-tag->mustache-str
+  [{:keys [ks tc] :as in-sec-c-tag}]
   (str (get-in tc [:delimiters :open]) "/"
        (str/join "." ks)
        (get-in tc [:delimiters :close])))
@@ -140,12 +141,12 @@
 
 (defn inverted-section->mustache-str
   [{:keys [o-tag c-tag nodes]}]
-  (str (open-inverted-section-tag->mustache-str o-tag)
+  (str (inverted-section-open-tag->mustache-str o-tag)
        (reduce (fn [^StringBuilder sb node]
                  (.append sb (node->mustache-str node)))
                (StringBuilder. (count nodes))
                nodes)
-       (close-inverted-section-tag->mustache-str c-tag)))
+       (inverted-section-close-tag->mustache-str c-tag)))
 
 (defn partial [key template-context]
   {:type ::partial
