@@ -13,6 +13,22 @@
                       :contexts []
                       :line-nodes []}})
 
+(defn- tag-contains? [node-types]
+  (reduce (fn [_ t]
+            (if (contains? ast/tags t)
+              (reduced true)
+              false))
+          false
+          node-types))
+
+(defn- standalone? [node-types]
+  (reduce (fn [_ t]
+            (if (= ::ast/whitespace t)
+              true
+              (reduced false)))
+          true
+          node-types))
+
 (defn lookahead-and-matched? [reader s]
   (let [read (reader/read-chars reader (ustr/length s))
         _ (reader/unread-chars reader read)]
@@ -45,8 +61,11 @@
 
 (defn parse-text [reader {:keys [template-context] :as state}]
   (let [{:keys [text read-cnt]} (read-text reader (get-in template-context [:delimiters :open]))
+        line-nodes (:line-nodes template-context)
         text-node (ast/text text (->min-tc template-context))]
     (-> state
+        (cond-> (and (not (standalone? line-nodes)) (tag-contains? line-nodes))
+          (update-in [:ast] mzip/look-behind))
         (update-in [:ast] mzip/append-node text-node)
         (update-in [:template-context :column] + read-cnt)
         (update-in [:template-context :line-nodes] conj (:type text-node)))))

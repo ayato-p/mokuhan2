@@ -675,4 +675,18 @@
                                                 :contexts [["x"]]})
                   [])])])
              (-> (sut/parse reader initial-state)
+                 :ast))))
+
+  (with-open [reader (test-reader "{{x}}hello" 3)]
+    (t/is (= (ast/syntax-tree
+              [(ast/variable-tag ["x"] {:delimiters default-delimiters
+                                        :row 1
+                                        :column 1
+                                        :standalone? false
+                                        :contexts []})
+               (ast/text "hello" {:delimiters default-delimiters
+                                  :row 1
+                                  :column 6
+                                  :contexts []})])
+             (-> (sut/parse reader initial-state)
                  :ast)))))
