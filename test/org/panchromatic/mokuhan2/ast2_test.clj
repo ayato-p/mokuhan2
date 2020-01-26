@@ -60,15 +60,6 @@
            (-> (ast/inverted-section-open-tag ["foo" "bar"] tc)
                (ast/inverted-section-open-tag->mustache-str)))))
 
-(t/deftest close-inverted-section-tag->mustache-str-test
-  (t/is (= "{{/foo}}"
-           (-> (ast/inverted-section-close-tag ["foo"] tc)
-               (ast/inverted-section-close-tag->mustache-str))))
-
-  (t/is (= "{{/foo.bar}}"
-           (-> (ast/inverted-section-close-tag ["foo" "bar"] tc)
-               (ast/inverted-section-close-tag->mustache-str)))))
-
 (t/deftest inverted-section->mustache-str-test
   (t/is (= "{{^foo}}{{bar}}{{/foo}}"
            (-> (ast/inverted-section

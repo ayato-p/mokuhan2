@@ -617,6 +617,22 @@
                 :occurred {:row 1 :column 25 :contexts [["x"] ["y"]]}}
                (:error (sut/parse r initial-state)))))))
 
+(t/deftest parse-inverted-section-open-tag-test
+  (t/testing "Successes"
+    (with-open [r (test-reader "{{^x}}")]
+      (t/is (= {:ast (ast/syntax-tree
+                      [(ast/inverted-section
+                        (ast/inverted-section-open-tag ["x"] {:delimiters default-delimiters
+                                                              :row 1 :column 1
+                                                              :standalone? true
+                                                              :contexts []}))])
+                :template-context {:delimiters default-delimiters
+                                   :row 1 :column 7
+                                   :line-nodes [::ast/inverted-section-open-tag]
+                                   :contexts [["x"]]}}
+               (-> (sut/parse-inverted-section-open-tag r initial-state)
+                   (update :ast mzip/complete)))))))
+
 (t/deftest parse-test
   (t/testing "Successes"
     (with-open [r (test-reader "Hello, world" 3)]
@@ -677,6 +693,24 @@
                  ast))
 
         (t/is (nil? error))))
+
+    (with-open [r (test-reader "{{^x}}{{x}}{{/x}}")]
+      (let [{:keys [ast error]} (sut/parse r initial-state)]
+        (t/is (= (ast/syntax-tree
+                  [(ast/inverted-section
+                    (ast/inverted-section-open-tag ["x"] {:delimiters default-delimiters
+                                                          :row 1 :column 1
+                                                          :standalone? false
+                                                          :contexts []})
+                    (ast/section-close-tag ["x"] {:delimiters default-delimiters
+                                                  :row 1 :column 12
+                                                  :standalone? false
+                                                  :contexts []})
+                    [(ast/variable-tag ["x"] {:delimiters default-delimiters
+                                              :row 1 :column 7
+                                              :standalone? false
+                                              :contexts [["x"]]})])])
+                 ast))))
 
     (with-open [r (test-reader (str "{{# x }}\n"
                                     " {{#y}} {{ y }} {{/y}} \n"

@@ -60,6 +60,10 @@
   (-> (append-node loc (ast/section open-tag))
       zip/down))
 
+(defn open-inverted-section [loc open-tag]
+  (-> (append-node loc (ast/inverted-section open-tag))
+      zip/down))
+
 (defn close-section [loc close-tag]
   (-> (append-node loc close-tag)
       zip/up

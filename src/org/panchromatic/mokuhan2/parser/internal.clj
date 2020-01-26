@@ -249,27 +249,44 @@
 
       (parse-error err template-context))))
 
-(defn parse-section-open-tag [reader {:keys [template-context] :as state}]
+(defn- parse-section-open-tag*
+  [sigil constructor open-section reader {:keys [template-context] :as state}]
   (let [{{open-delim :open close-delim :close} :delimiters
          :keys [line-nodes]} template-context
         o (read-delimiter reader open-delim)
-        ensure-open-section? (= \# (reader/read-char reader))
+        ensure-open-section? (= sigil (reader/read-char reader))
         {:as k :keys [ks read-cnt err]} (read-keys reader close-delim)
         c (read-delimiter reader close-delim)]
     (if (and ensure-open-section? (nil? err))
       (let [standalone (standalone? line-nodes)
             tc (-> (->min-tc template-context)
                    (assoc :standalone? standalone))
-            section-open-tag-node (ast/section-open-tag ks tc)]
+            section-open-tag-node (constructor ks tc)]
         (-> state
             (cond-> (and (not standalone) (tag-contains? line-nodes))
               (update-in [:ast] mzip/look-behind))
-            (update-in [:ast] mzip/open-section section-open-tag-node)
+            (update-in [:ast] open-section section-open-tag-node)
             (update-in [:template-context :contexts] conj ks)
             (update-in [:template-context :column] + (apply + 1 (map :read-cnt [o k c])))
             (update-in [:template-context :line-nodes] conj (:type section-open-tag-node))))
 
       (parse-error err template-context))))
+
+(defn parse-section-open-tag [reader {:keys [template-context] :as state}]
+  (parse-section-open-tag*
+   \#
+   ast/section-open-tag
+   mzip/open-section
+   reader
+   state))
+
+(defn parse-inverted-section-open-tag [reader state]
+  (parse-section-open-tag*
+   \^
+   ast/inverted-section-open-tag
+   mzip/open-inverted-section
+   reader
+   state))
 
 (defn parse-section-close-tag [reader {:keys [template-context] :as state}]
   (let [{{open-delim :open close-delim :close} :delimiters
@@ -337,6 +354,8 @@
                 (recur reader (parse-unescaped-variable-tag reader state))
                 \#
                 (recur reader (parse-section-open-tag reader state))
+                \^
+                (recur reader (parse-inverted-section-open-tag reader state))
                 \/
                 (recur reader (parse-section-close-tag reader state))
                 (recur reader (parse-variable-tag reader state)))

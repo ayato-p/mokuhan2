@@ -5,8 +5,7 @@
 
 (def tags
   #{::variable-tag ::unescaped-variable-tag
-    ::section-open-tag ::section-close-tag
-    ::inverted-section-open-tag ::inverted-section-close-tag
+    ::section-open-tag ::inverted-section-open-tag ::section-close-tag
     ::set-delimiter ::partial})
 
 (declare node->mustache-str)
@@ -114,29 +113,20 @@
        (str/join "." ks)
        (get-in tc [:delimiters :close])))
 
-(defn inverted-section-close-tag [keys template-context]
-  {:type ::inverted-section-close-tag
-   :ks keys
-   :tc template-context})
-
-(defn inverted-section-close-tag->mustache-str
-  [{:keys [ks tc] :as in-sec-c-tag}]
-  (str (get-in tc [:delimiters :open]) "/"
-       (str/join "." ks)
-       (get-in tc [:delimiters :close])))
-
 (defn inverted-section
   ([]
-   (inverted-section nil nil))
+   (inverted-section nil))
+  ([open-tag]
+   (inverted-section open-tag nil))
   ([open-tag close-tag]
    (inverted-section open-tag close-tag []))
   ([open-tag close-tag nodes]
    {:type ::inverted-section
     :closed? (some? close-tag)
-    :nodes (-> []
-               (conj open-tag)
-               (into nodes)
-               (conj close-tag))}))
+    :nodes (cond-> []
+             open-tag (conj open-tag)
+             (seq nodes) (into nodes)
+             close-tag (conj close-tag))}))
 
 (defn inverted-section->mustache-str
   [{:keys [closed? nodes]}]
@@ -145,7 +135,7 @@
                      (ustr/append sb (node->mustache-str node)))
                    (ustr/string-builder (count nodes))
                    (when (seq nodes) (subvec nodes 1 (dec (count nodes))))))
-      (cond-> closed? (str (inverted-section-close-tag->mustache-str (last nodes))))))
+      (cond-> closed? (str (section-close-tag->mustache-str (last nodes))))))
 
 (defn partial [key template-context]
   {:type ::partial
