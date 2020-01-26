@@ -535,7 +535,69 @@
                                                :contexts []})])
                  ast))
 
-        (t/is (nil? error)))))
+        (t/is (nil? error))))
+
+    (with-open [r (test-reader (str "{{# x }}\n"
+                                    " {{#y}} {{ y }} {{/y}} \n"
+                                    "{{/ x }}\n") 3)]
+      (let [{:keys [ast error]} (sut/parse r initial-state)]
+        (t/is (= (ast/syntax-tree
+                  [(ast/section
+                    (ast/section-open-tag ["x"] {:delimiters default-delimiters
+                                                 :row 1
+                                                 :column 1
+                                                 :standalone? true
+                                                 :contexts []})
+                    (ast/section-close-tag ["x"] {:delimiters default-delimiters
+                                                  :row 3
+                                                  :column 1
+                                                  :standalone? true
+                                                  :contexts []})
+                    [(ast/newline "\n" {:delimiters default-delimiters
+                                        :row 1
+                                        :column 9
+                                        :contexts [["x"]]})
+                     (ast/whitespace " " {:delimiters default-delimiters
+                                          :row 2
+                                          :column 1
+                                          :contexts [["x"]]})
+                     (ast/section
+                      (ast/section-open-tag ["y"] {:delimiters default-delimiters
+                                                   :row 2
+                                                   :column 2
+                                                   :standalone? false
+                                                   :contexts [["x"]]})
+                      (ast/section-close-tag ["y"] {:delimiters default-delimiters
+                                                    :row 2
+                                                    :column 17
+                                                    :standalone? false
+                                                    :contexts [["x"]]})
+                      [(ast/whitespace " " {:delimiters default-delimiters
+                                            :row 2
+                                            :column 8
+                                            :contexts [["x"]  ["y"]]})
+                       (ast/variable-tag ["y"] {:delimiters default-delimiters
+                                                :row 2
+                                                :column 9
+                                                :standalone? false
+                                                :contexts [["x"] ["y"]]})
+                       (ast/whitespace " " {:delimiters default-delimiters
+                                            :row 2
+                                            :column 16
+                                            :contexts [["x"]  ["y"]]})])
+                     (ast/whitespace " " {:delimiters default-delimiters
+                                          :row 2
+                                          :column 23
+                                          :contexts [["x"]]})
+                     (ast/newline "\n" {:delimiters default-delimiters
+                                        :row 2
+                                        :column 24
+                                        :contexts [["x"]]})])
+                   (ast/newline "\n" {:delimiters default-delimiters
+                                      :row 3
+                                      :column 9
+                                      :contexts []})])
+                 ast)))))
 
   (t/testing "Errors"
     (with-open [r (test-reader "Hello, {{name" 3)]

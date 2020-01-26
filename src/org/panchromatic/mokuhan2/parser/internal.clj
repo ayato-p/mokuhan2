@@ -252,10 +252,10 @@
 (defn parse-open-section-tag [reader {:keys [template-context] :as state}]
   (let [{{open-delim :open close-delim :close} :delimiters
          :keys [line-nodes]} template-context
-        _ (read-delimiter reader open-delim)
+        o (read-delimiter reader open-delim)
         ensure-open-section? (= \# (reader/read-char reader))
-        {:keys [ks read-cnt err]} (read-keys reader close-delim)
-        _ (read-delimiter reader close-delim)]
+        {:as k :keys [ks read-cnt err]} (read-keys reader close-delim)
+        c (read-delimiter reader close-delim)]
     (if (and ensure-open-section? (nil? err))
       (let [standalone (standalone? line-nodes)
             tc (-> (->min-tc template-context)
@@ -266,7 +266,7 @@
               (update-in [:ast] mzip/look-behind))
             (update-in [:ast] mzip/open-section section-open-tag-node)
             (update-in [:template-context :contexts] conj ks)
-            (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
+            (update-in [:template-context :column] + (apply + 1 (map :read-cnt [o k c])))
             (update-in [:template-context :line-nodes] conj (:type section-open-tag-node))))
 
       (parse-error err template-context))))
@@ -275,10 +275,10 @@
   (let [{{open-delim :open close-delim :close} :delimiters
          :keys [line-nodes contexts]} template-context
         current-context (peek contexts)
-        _ (read-delimiter reader open-delim)
+        o (read-delimiter reader open-delim)
         ensure-close-section? (= \/ (reader/read-char reader))
-        {:keys [ks read-cnt err]} (read-keys reader close-delim)
-        _ (read-delimiter reader close-delim)]
+        {:as k :keys [ks read-cnt err]} (read-keys reader close-delim)
+        c (read-delimiter reader close-delim)]
     (cond
       (and ensure-close-section? (= current-context ks) (nil? err))
       (let [standalone (standalone? line-nodes)
@@ -291,7 +291,7 @@
               (update-in [:ast] mzip/look-behind))
             (update-in [:ast] mzip/close-section section-close-tag-node)
             (update-in [:template-context :contexts] pop)
-            (update-in [:template-context :column] + (ustr/length open-delim) 1 read-cnt (ustr/length close-delim))
+            (update-in [:template-context :column] + (apply + 1 (map :read-cnt [o k c])))
             (update-in [:template-context :line-nodes] conj (:type section-close-tag-node))))
 
       (and (nil? err) (not= current-context ks))
