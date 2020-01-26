@@ -9,7 +9,7 @@
 
 (defn- test-reader
   ([s]
-   (test-reader s 1))
+   (test-reader s 3))
   ([s n]
    (reader/pushback-reader (java.io.StringReader. s) n)))
 
@@ -346,10 +346,10 @@
                (-> (sut/parse-unescaped-variable-tag reader initial-state)
                    :error))))))
 
-(t/deftest parse-open-section-tag-test
+(t/deftest parse-section-open-tag-test
   (t/testing "Successes"
     (with-open [r (test-reader "{{#foo}}" 3)]
-      (let [state (sut/parse-open-section-tag r initial-state)]
+      (let [state (sut/parse-section-open-tag r initial-state)]
         (t/is (= {:ast (ast/syntax-tree
                         [(ast/section
                           (ast/section-open-tag ["foo"] {:delimiters default-delimiters
@@ -370,7 +370,7 @@
         (t/is (= "" (slurp r)))))
 
     (with-open [r (test-reader "{{#foo.bar}}" 3)]
-      (let [state (sut/parse-open-section-tag r initial-state)]
+      (let [state (sut/parse-section-open-tag r initial-state)]
         (t/is (= {:ast (ast/syntax-tree
                         [(ast/section
                           (ast/section-open-tag ["foo" "bar"] {:delimiters default-delimiters
@@ -395,14 +395,14 @@
       (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                 :cause :unclosed-tag
                 :occurred {:row 1 :column 1 :contexts ()}}
-               (-> (sut/parse-open-section-tag reader initial-state)
+               (-> (sut/parse-section-open-tag reader initial-state)
                    :error))))
 
     (with-open [reader (test-reader "{{#fo o")]
       (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
                 :cause :invalid-tag-name
                 :occurred {:row 1 :column 1 :contexts ()}}
-               (-> (sut/parse-open-section-tag reader initial-state)
+               (-> (sut/parse-section-open-tag reader initial-state)
                    :error))))))
 
 (def opened-section-ast
@@ -427,10 +427,10 @@
                       :line-nodes [::ast/section-open-tag]
                       :contexts '(["foo"])}})
 
-(t/deftest parse-close-section-tag-test
+(t/deftest parse-section-close-tag-test
   (t/testing "Successes"
     (with-open [reader (test-reader "{{/foo}}" 3)]
-      (let [state (sut/parse-close-section-tag reader opened-section-state)]
+      (let [state (sut/parse-section-close-tag reader opened-section-state)]
         (t/is (= {:ast (ast/syntax-tree
                         [(ast/section
                           (ast/section-open-tag ["foo"] {:delimiters default-delimiters
@@ -458,7 +458,7 @@
                         :occurred {:row 1
                                    :column 9
                                    :contexts '(["foo"])}}}
-               (sut/parse-close-section-tag reader opened-section-state))))
+               (sut/parse-section-close-tag reader opened-section-state))))
 
     (with-open [reader (test-reader "{{/foo")]
       (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
@@ -466,7 +466,7 @@
                         :occurred {:row 1
                                    :column 9
                                    :contexts '(["foo"])}}}
-               (sut/parse-close-section-tag reader opened-section-state))))
+               (sut/parse-section-close-tag reader opened-section-state))))
 
     (with-open [reader (test-reader "{{/fo o}}")]
       (t/is (= {:error {:type :org.panchromatic.mokuhan2/parse-error
@@ -474,7 +474,148 @@
                         :occurred {:row 1
                                    :column 9
                                    :contexts '(["foo"])}}}
-               (sut/parse-close-section-tag reader opened-section-state))))))
+               (sut/parse-section-close-tag reader opened-section-state))))))
+
+(t/deftest parse-section-test
+  (t/testing "Successes"
+    (t/testing "nested sections"
+      (with-open [r (test-reader "{{#x}}{{#y}}ok{{/y}}{{/x}}" 3)]
+        (t/is (= (ast/syntax-tree
+                  [(ast/section
+                    (ast/section-open-tag ["x"] {:delimiters default-delimiters
+                                                 :row 1 :column 1
+                                                 :standalone? false
+                                                 :contexts []})
+                    (ast/section-close-tag ["x"] {:delimiters default-delimiters
+                                                  :row 1 :column 21
+                                                  :standalone? false
+                                                  :contexts []})
+                    [(ast/section
+                      (ast/section-open-tag ["y"] {:delimiters default-delimiters
+                                                   :row 1 :column 7
+                                                   :standalone? false
+                                                   :contexts [["x"]]})
+                      (ast/section-close-tag ["y"] {:delimiters default-delimiters
+                                                    :row 1 :column 15
+                                                    :standalone? false
+                                                    :contexts [["x"]]})
+                      [(ast/text "ok" {:delimiters default-delimiters
+                                       :row 1 :column 13
+                                       :contexts [["x"] ["y"]]})])])])
+                 (:ast (sut/parse r initial-state)))))
+
+      (with-open [r (test-reader (str "{{#x}}\n"
+                                      "{{#y}}ok{{/y}}\n"
+                                      "{{/x}}"))]
+        (t/is (= (ast/syntax-tree
+                  [(ast/section
+                    (ast/section-open-tag ["x"] {:delimiters default-delimiters
+                                                 :row 1 :column 1
+                                                 :standalone? true
+                                                 :contexts []})
+                    (ast/section-close-tag ["x"] {:delimiters default-delimiters
+                                                  :row 3 :column 1
+                                                  :standalone? true
+                                                  :contexts []})
+                    [(ast/newline "\n" {:delimiters default-delimiters
+                                        :row 1 :column 7
+                                        :contexts [["x"]]})
+                     (ast/section
+                      (ast/section-open-tag ["y"] {:delimiters default-delimiters
+                                                   :row 2 :column 1
+                                                   :standalone? false
+                                                   :contexts [["x"]]})
+                      (ast/section-close-tag ["y"] {:delimiters default-delimiters
+                                                    :row 2 :column 9
+                                                    :standalone? false
+                                                    :contexts [["x"]]})
+                      [(ast/text "ok" {:delimiters default-delimiters
+                                       :row 2 :column 7
+                                       :contexts [["x"] ["y"]]})])
+                     (ast/newline "\n" {:delimiters default-delimiters
+                                        :row 2 :column 15
+                                        :contexts [["x"]]})])])
+                 (:ast (sut/parse r initial-state)))))
+
+      (with-open [r (test-reader (str "{{#x}}\n"
+                                      "{{#y}}\n"
+                                      "ok\n"
+                                      "{{/y}}\n"
+                                      "{{/x}}"))]
+        (t/is (= (ast/syntax-tree
+                  [(ast/section
+                    (ast/section-open-tag ["x"] {:delimiters default-delimiters
+                                                 :row 1 :column 1
+                                                 :standalone? true
+                                                 :contexts []})
+                    (ast/section-close-tag ["x"] {:delimiters default-delimiters
+                                                  :row 5 :column 1
+                                                  :standalone? true
+                                                  :contexts []})
+                    [(ast/newline "\n" {:delimiters default-delimiters
+                                        :row 1 :column 7
+                                        :contexts [["x"]]})
+                     (ast/section
+                      (ast/section-open-tag ["y"] {:delimiters default-delimiters
+                                                   :row 2 :column 1
+                                                   :standalone? true
+                                                   :contexts [["x"]]})
+                      (ast/section-close-tag ["y"] {:delimiters default-delimiters
+                                                    :row 4 :column 1
+                                                    :standalone? true
+                                                    :contexts [["x"]]})
+                      [(ast/newline "\n" {:delimiters default-delimiters
+                                          :row 2 :column 7
+                                          :contexts [["x"] ["y"]]})
+                       (ast/text "ok" {:delimiters default-delimiters
+                                       :row 3 :column 1
+                                       :contexts [["x"] ["y"]]})
+                       (ast/newline "\n" {:delimiters default-delimiters
+                                          :row 3 :column 3
+                                          :contexts [["x"] ["y"]]})])
+                     (ast/newline "\n" {:delimiters default-delimiters
+                                        :row 4 :column 7
+                                        :contexts [["x"]]})])])
+                 (:ast (sut/parse r initial-state))))))
+
+    (t/testing "dotted name sections"
+      (with-open [r (test-reader "{{#x.y}}{{#a.b}}ok{{/a.b}}{{/x.y}}")]
+        (t/is (= (ast/syntax-tree
+                  [(ast/section
+                    (ast/section-open-tag ["x" "y"] {:delimiters default-delimiters
+                                                     :row 1 :column 1
+                                                     :standalone? false
+                                                     :contexts []})
+                    (ast/section-close-tag ["x" "y"] {:delimiters default-delimiters
+                                                      :row 1 :column 27
+                                                      :standalone? false
+                                                      :contexts []})
+                    [(ast/section
+                      (ast/section-open-tag ["a" "b"] {:delimiters default-delimiters
+                                                       :row 1 :column 9
+                                                       :standalone? false
+                                                       :contexts [["x" "y"]]})
+                      (ast/section-close-tag ["a" "b"] {:delimiters default-delimiters
+                                                        :row 1 :column 19
+                                                        :standalone? false
+                                                        :contexts [["x" "y"]]})
+                      [(ast/text "ok" {:delimiters default-delimiters
+                                       :row 1 :column 17
+                                       :contexts [["x" "y"] ["a" "b"]]})])])])
+                 (:ast (sut/parse r initial-state)))))))
+
+  (t/testing "Errors"
+    (with-open [r (test-reader "{{#x}}{{#y}}{{/x}}{{/y}}")]
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
+                :cause :unclosed-section
+                :occurred {:row 1 :column 13 :contexts [["x"] ["y"]]}}
+               (:error (sut/parse r initial-state)))))
+
+    (with-open [r (test-reader "{{#x}}{{#y}}{{#z}}{{/z}}{{/x}}{{/y}}")]
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
+                :cause :unclosed-section
+                :occurred {:row 1 :column 25 :contexts [["x"] ["y"]]}}
+               (:error (sut/parse r initial-state)))))))
 
 (t/deftest parse-test
   (t/testing "Successes"

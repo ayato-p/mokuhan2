@@ -249,7 +249,7 @@
 
       (parse-error err template-context))))
 
-(defn parse-open-section-tag [reader {:keys [template-context] :as state}]
+(defn parse-section-open-tag [reader {:keys [template-context] :as state}]
   (let [{{open-delim :open close-delim :close} :delimiters
          :keys [line-nodes]} template-context
         o (read-delimiter reader open-delim)
@@ -271,7 +271,7 @@
 
       (parse-error err template-context))))
 
-(defn parse-close-section-tag [reader {:keys [template-context] :as state}]
+(defn parse-section-close-tag [reader {:keys [template-context] :as state}]
   (let [{{open-delim :open close-delim :close} :delimiters
          :keys [line-nodes contexts]} template-context
         current-context (peek contexts)
@@ -336,9 +336,9 @@
                 \&
                 (recur reader (parse-unescaped-variable-tag reader state))
                 \#
-                (recur reader (parse-open-section-tag reader state))
+                (recur reader (parse-section-open-tag reader state))
                 \/
-                (recur reader (parse-close-section-tag reader state))
+                (recur reader (parse-section-close-tag reader state))
                 (recur reader (parse-variable-tag reader state)))
 
               (recur reader (parse-text reader state))))
