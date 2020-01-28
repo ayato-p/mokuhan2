@@ -631,6 +631,20 @@
                                    :line-nodes [::ast/inverted-section-open-tag]
                                    :contexts [["x"]]}}
                (-> (sut/parse-inverted-section-open-tag r initial-state)
+                   (update :ast mzip/complete)))))
+
+    (with-open [r (test-reader "{{^ x }}")]
+      (t/is (= {:ast (ast/syntax-tree
+                      [(ast/inverted-section
+                        (ast/inverted-section-open-tag ["x"] {:delimiters default-delimiters
+                                                              :row 1 :column 1
+                                                              :standalone? true
+                                                              :contexts []}))])
+                :template-context {:delimiters default-delimiters
+                                   :row 1 :column 9
+                                   :line-nodes [::ast/inverted-section-open-tag]
+                                   :contexts [["x"]]}}
+               (-> (sut/parse-inverted-section-open-tag r initial-state)
                    (update :ast mzip/complete)))))))
 
 (t/deftest parse-test
