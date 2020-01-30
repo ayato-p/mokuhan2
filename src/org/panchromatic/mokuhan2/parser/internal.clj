@@ -110,24 +110,24 @@
         (update-in [:template-context :row] inc)
         (assoc-in [:template-context :line-nodes] []))))
 
-(let [state {:begin {:read-ws :before-read-keys
-                     :read-char :read-keys}
-             :before-read-keys {:read-ws :before-read-keys
-                                :read-char :read-keys}
-             :read-keys {:read-char :read-keys
-                         :read-ws :after-read-keys
-                         :read-delim :end}
-             :after-read-keys {:read-ws :after-read-keys
-                               :read-delim :end}
+(let [state {:begin {:read-ws :before-read
+                     :read-char :read}
+             :before-read {:read-ws :before-read
+                           :read-char :read}
+             :read {:read-char :read
+                    :read-ws :after-read
+                    :read-delim :end}
+             :after-read {:read-ws :after-read
+                          :read-delim :end}
              :end {}}]
   (defn- next-read-keys-state [current action]
     (get-in state [current action])))
 
 (def ^:private valid-read-keys-state
   #{:begin
-    :before-read-keys
-    :read-keys
-    :after-read-keys
+    :before-read
+    :read
+    :after-read
     :end})
 
 (defn- read-keys [reader close-delim]
@@ -141,7 +141,8 @@
           (reader/unread-char reader c)
           result)
 
-        (nil? state)
+        (or (nil? state)
+            (contains? #{\newline \return} c))
         {:err :invalid-tag-name}
 
         (nil? c)

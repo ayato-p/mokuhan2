@@ -297,6 +297,13 @@
                 :cause :invalid-tag-name
                 :occurred {:row 1 :column 1 :contexts ()}}
                (-> (sut/parse-variable-tag reader initial-state)
+                   :error))))
+
+    (with-open [reader (test-reader "{{f\noo}}")]
+      (t/is (= {:type :org.panchromatic.mokuhan2/parse-error
+                :cause :invalid-tag-name
+                :occurred {:row 1 :column 1 :contexts ()}}
+               (-> (sut/parse-variable-tag reader initial-state)
                    :error))))))
 
 (t/deftest parse-unescaped-variable-tag-test
